@@ -1,63 +1,64 @@
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
+import type { FormEvent } from 'react';
 
-// Вход и регистрация по email + паролю. Это пример — Codex поможет улучшить (Google-вход и т.д.).
-export function Auth() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+type AuthProps = {
+  onStart: (nickname: string) => void;
+};
+
+function normalizeNickname(value: string) {
+  return value.trim().replace(/\s+/g, ' ');
+}
+
+export function Auth({ onStart }: AuthProps) {
+  const [nickname, setNickname] = useState('');
   const [message, setMessage] = useState('');
-  const [busy, setBusy] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setBusy(true);
-    setMessage('');
-    try {
-      const fn =
-        mode === 'signup'
-          ? supabase.auth.signUp({ email, password })
-          : supabase.auth.signInWithPassword({ email, password });
-      const { error } = await fn;
-      if (error) setMessage(error.message);
-      else if (mode === 'signup') setMessage('Готово! Проверь почту, если нужна подтверждалка.');
-    } catch {
-      setMessage('Что-то пошло не так. Попробуй ещё раз.');
-    } finally {
-      setBusy(false);
+
+    const nextNickname = normalizeNickname(nickname);
+
+    if (nextNickname.length < 2) {
+      setMessage('Напиши никнейм хотя бы из 2 символов.');
+      return;
     }
+
+    onStart(nextNickname);
   }
 
   return (
-    <section className="card">
-      <h2>{mode === 'signin' ? 'Вход' : 'Регистрация'}</h2>
+    <section className="card lobby-card">
+      <div className="lobby-badges" aria-hidden="true">
+        <span>звезда</span>
+        <span>море</span>
+        <span>книга</span>
+      </div>
+
+      <h2>Вход в игру</h2>
+      <p className="auth-subtitle">Придумай никнейм и выбирай режим: ассоциации или Wordle.</p>
+
+      <div className="lobby-preview" aria-hidden="true">
+        <span>Connection</span>
+        <span>Wordle</span>
+      </div>
+
       <form onSubmit={handleSubmit} className="form">
         <input
-          type="email"
-          placeholder="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          type="text"
+          placeholder="твой никнейм"
+          value={nickname}
+          onChange={(e) => {
+            setNickname(e.target.value);
+            setMessage('');
+          }}
+          maxLength={24}
+          autoFocus
           required
         />
-        <input
-          type="password"
-          placeholder="пароль (6+ символов)"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          minLength={6}
-          required
-        />
-        <button type="submit" disabled={busy}>
-          {busy ? '…' : mode === 'signin' ? 'Войти' : 'Создать аккаунт'}
-        </button>
+        <button type="submit">Играть</button>
       </form>
+
       {message && <p className="message">{message}</p>}
-      <button
-        className="ghost"
-        onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
-      >
-        {mode === 'signin' ? 'Нет аккаунта? Зарегистрируйся' : 'Уже есть аккаунт? Войти'}
-      </button>
     </section>
   );
 }
