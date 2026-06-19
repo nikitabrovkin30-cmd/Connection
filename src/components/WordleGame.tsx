@@ -29,6 +29,11 @@ type AiTextResponse = {
   text?: string;
 };
 
+type LearnedWordRow = {
+  word: string;
+  length: number;
+};
+
 type WordleGameProps = {
   coins: number;
   hintCost: number;
@@ -89,6 +94,10 @@ const WORDLE_ALLOWED_WORDS: Record<WordLength, Set<string>> = {
 
 function normalizeWord(value: string) {
   return value.trim().toLowerCase().replace(/ё/g, 'е');
+}
+
+function getWordKey(word: string, length: WordLength) {
+  return `${length}:${word}`;
 }
 
 function readCachedValidation(cacheKey: string) {
@@ -202,7 +211,7 @@ function parseWordValidation(value: string) {
 }
 
 async function isRealRussianWord(word: string, length: WordLength) {
-  const cacheKey = `${length}:${word}`;
+  const cacheKey = getWordKey(word, length);
   const cachedValue = readCachedValidation(cacheKey);
   if (cachedValue !== undefined) return cachedValue;
 
@@ -225,7 +234,58 @@ async function isRealRussianWord(word: string, length: WordLength) {
   }
 
   writeCachedValidation(cacheKey, validation);
+  if (validation) {
+    void saveLearnedWord(word, length);
+  }
   return validation;
+}
+
+async function loadLearnedWords() {
+  const { data, error } = await supabase
+    .from('wordle_learned_words')
+    .select('word, length');
+
+  if (error) {
+    console.error(error.message);
+    return new Set<string>();
+  }
+
+  const learnedWords = new Set<string>();
+
+  (data as LearnedWordRow[] | null)?.forEach((item) => {
+    if (isWordLength(item.length)) {
+      learnedWords.add(getWordKey(normalizeWord(item.word), item.length));
+    }
+  });
+
+  return learnedWords;
+}
+
+async function saveLearnedWord(word: string, length: WordLength) {
+  const normalizedWord = normalizeWord(word);
+
+  if (WORDLE_ALLOWED_WORDS[length].has(normalizedWord)) return;
+
+  const { error } = await supabase
+    .from('wordle_learned_words')
+    .upsert(
+      {
+        word: normalizedWord,
+        length,
+      },
+      {
+        onConflict: 'word,length',
+        ignoreDuplicates: true,
+      },
+    );
+
+  if (error) {
+    console.error(error.message);
+  }
+}
+
+function isAllowedWord(word: string, length: WordLength, learnedWords: Set<string>) {
+  return WORDLE_ALLOWED_WORDS[length].has(word) || learnedWords.has(getWordKey(word, length));
 }
 
 function pickWord(length: WordLength, currentWord?: string) {
@@ -307,6 +367,7 @@ export function WordleGame({
   const [hintIndex, setHintIndex] = useState<number | null>(() => savedState?.hintIndex ?? null);
   const [showAd, setShowAd] = useState(false);
   const [checkingWord, setCheckingWord] = useState(false);
+  const [learnedWords, setLearnedWords] = useState<Set<string>>(() => new Set());
 
   const emptyRows = useMemo(
     () => Array.from({ length: Math.max(0, MAX_ATTEMPTS - rows.length) }),
@@ -344,6 +405,20 @@ export function WordleGame({
       } satisfies SavedWordleState),
     );
   }, [guess, hintIndex, message, rows, status, targetWord, userEmail, wordLength]);
+
+  useEffect(() => {
+    let active = true;
+
+    void loadLearnedWords().then((nextLearnedWords) => {
+      if (active) {
+        setLearnedWords(nextLearnedWords);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function resetGame(nextLength = wordLength) {
     setWordLength(nextLength);
@@ -402,7 +477,7 @@ export function WordleGame({
 
     try {
       const validWord =
-        WORDLE_ALLOWED_WORDS[wordLength].has(normalizedGuess) ||
+        isAllowedWord(normalizedGuess, wordLength, learnedWords) ||
         (await isRealRussianWord(normalizedGuess, wordLength));
 
       if (!validWord) {
@@ -410,9 +485,14 @@ export function WordleGame({
         focusBoard();
         return;
       }
+
+      if (!WORDLE_ALLOWED_WORDS[wordLength].has(normalizedGuess)) {
+        const wordKey = getWordKey(normalizedGuess, wordLength);
+        setLearnedWords((currentLearnedWords) => new Set(currentLearnedWords).add(wordKey));
+      }
     } catch (error) {
       console.error(error instanceof Error ? error.message : 'Не получилось проверить слово через ИИ.');
-      if (!WORDLE_ALLOWED_WORDS[wordLength].has(normalizedGuess)) {
+      if (!isAllowedWord(normalizedGuess, wordLength, learnedWords)) {
         setMessage('ИИ недоступен, а такого слова нет в локальном словаре игры.');
         focusBoard();
         return;
