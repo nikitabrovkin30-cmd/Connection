@@ -205,9 +205,22 @@ const CLUE_GROUPS: readonly ClueGroup[] = [
   },
 ];
 
+function getStableIndex(word: string, length: number) {
+  const total = Array.from(word).reduce((sum, letter) => sum + letter.charCodeAt(0), 0);
+  return length > 0 ? total % length : 0;
+}
+
+function getCloseClueWord(word: string, group?: ClueGroup) {
+  if (!group) return '';
+
+  const options = group.words.filter((groupWord) => groupWord !== word);
+  return options[getStableIndex(word, options.length)] ?? '';
+}
+
 export function getHardClues(word: string) {
   const groups = CLUE_GROUPS.filter((group) => group.words.includes(word));
   const group = groups[0];
+  const closeClueWord = getCloseClueWord(word, group);
   const letters = Array.from(word);
   const visiblePositions = new Set<number>();
 
@@ -219,7 +232,9 @@ export function getHardClues(word: string) {
     .map((letter, index) => (visiblePositions.has(index) ? letter : '_'))
     .join(' ');
 
-  const mainClue = group?.clue ?? 'Категория: обычное русское слово.';
+  const mainClue = closeClueWord
+    ? `Близкое слово: ${closeClueWord}.`
+    : 'Близкое слово подобрать не получилось.';
   const secondClue = group
     ? group.place
     : 'Подумай о предмете, месте, природе, еде, человеке или событии.';
