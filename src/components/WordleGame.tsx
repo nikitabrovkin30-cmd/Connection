@@ -332,8 +332,7 @@ export function WordleGame({
 
     if (e.key === 'Backspace') {
       e.preventDefault();
-      setGuess((current) => current.slice(0, -1));
-      setMessage('');
+      removeLetter();
       return;
     }
 
@@ -352,6 +351,14 @@ export function WordleGame({
       if (current.length >= wordLength) return current;
       return `${current}${letter}`;
     });
+    setMessage('');
+    window.setTimeout(focusBoard, 0);
+  }
+
+  function removeLetter() {
+    if (status !== 'playing' || checkingWord) return;
+
+    setGuess((current) => current.slice(0, -1));
     setMessage('');
     window.setTimeout(focusBoard, 0);
   }
@@ -445,6 +452,14 @@ export function WordleGame({
           </div>
 
           <div className="wordle-actions">
+            <button
+              className="soft-button"
+              disabled={status !== 'playing' || checkingWord || guess.length === 0}
+              onClick={removeLetter}
+              type="button"
+            >
+              Стереть
+            </button>
             <button disabled={status !== 'playing' || checkingWord} type="submit">
               {checkingWord ? 'Проверяем...' : 'Проверить'}
             </button>
