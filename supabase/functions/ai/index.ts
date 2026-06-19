@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
     if (!GEMINI_API_KEY) {
       throw new Error('Нет GEMINI_API_KEY. Поставь секрет: npm run ai:secret -- GEMINI_API_KEY=...');
     }
-    const { prompt, system } = await req.json();
+    const { prompt, system, json } = await req.json();
     if (!prompt) throw new Error('Нужно поле prompt');
 
     const res = await fetch(
@@ -34,12 +34,25 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           systemInstruction: system ? { parts: [{ text: system }] } : undefined,
           contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 256,
+            responseMimeType: json ? 'application/json' : 'text/plain',
+          },
         }),
       },
     );
 
     const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data?.error?.message ?? 'Gemini request failed');
+    }
+
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    if (!text.trim()) {
+      throw new Error(data?.promptFeedback?.blockReason ?? 'Gemini returned empty text');
+    }
+
     return new Response(JSON.stringify({ text }), {
       headers: { ...cors, 'Content-Type': 'application/json' },
     });
