@@ -438,7 +438,7 @@ export default function App() {
     return (
       <main className="container">
         <section className="card lobby-card">
-          <h1>Association Wordle</h1>
+          <h1>Association Wordle Puzzle</h1>
           <p className="message">{supabaseConfigError}</p>
           <p className="auth-subtitle">
             В Vercel открой Project Settings {'->'} Environment Variables и проверь переменные.
@@ -459,7 +459,7 @@ export default function App() {
   return (
     <main className="container">
       <header className="header">
-        <h1>Association Wordle</h1>
+        <h1>Association Wordle Puzzle</h1>
         {nickname && (
           <div className="header-actions">
           <span className="coin-balance">

@@ -60,7 +60,7 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
     return (
       <section className="card intro-card">
         <span className="intro-kicker">Игры в проекте</span>
-        <h2>Association Wordle</h2>
+        <h2>Association Wordle Puzzle</h2>
 
         <div className="intro-grid">
           <article className="intro-panel wordle-panel">
@@ -95,9 +95,9 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
               Puzzle - режим с загадками. Нужно понять описание, написать ответ одним словом и получить монеты за правильную разгадку.
             </p>
             <ul>
-              <li>Каждая загадка проверяет логику и внимательность.</li>
-              <li>Подсказку можно купить за монеты или открыть после рекламы.</li>
-              <li>Прогресс сохраняется, поэтому можно продолжить позже.</li>
+              <li>Есть три сложности: легко, средне и сложно.</li>
+              <li>Загадки бывают про предметы, природу, идеи и скрытый смысл.</li>
+              <li>Чем сложнее режим, тем больше нужно думать над формулировкой.</li>
             </ul>
           </article>
         </div>

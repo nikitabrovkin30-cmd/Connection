@@ -623,6 +623,25 @@ button.ghost:hover {
     linear-gradient(180deg, #ffffff 0%, #f6f2ff 100%);
 }
 
+.puzzle-difficulties {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.difficulty-button {
+  border: 1px solid #decdf8;
+  background: #fff;
+  color: #5b21b6;
+}
+
+.difficulty-button.active {
+  border-color: #8b5cf6;
+  background: #ede9fe;
+  color: #4c1d95;
+}
+
 .puzzle-question {
   display: grid;
   gap: 10px;
@@ -1049,6 +1068,7 @@ button.ghost:hover {
 
   .mode-tabs,
   .wordle-modes,
+  .puzzle-difficulties,
   .intro-grid {
     grid-template-columns: 1fr;
   }
