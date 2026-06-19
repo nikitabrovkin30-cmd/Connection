@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
+import { SECRET_WORDS } from '../data/wordBank';
 import { supabase } from '../lib/supabase';
 import { AdModal } from './AdModal';
 
@@ -67,6 +68,12 @@ const WORDS: Record<WordLength, string[]> = {
 };
 
 const wordValidationCache = new Map<string, boolean>();
+
+const WORDLE_ALLOWED_WORDS: Record<WordLength, Set<string>> = {
+  4: new Set([...WORDS[4], ...SECRET_WORDS.filter((word) => word.length === 4)]),
+  5: new Set([...WORDS[5], ...SECRET_WORDS.filter((word) => word.length === 5)]),
+  6: new Set([...WORDS[6], ...SECRET_WORDS.filter((word) => word.length === 6)]),
+};
 
 function normalizeWord(value: string) {
   return value.trim().toLowerCase().replace(/ё/g, 'е');
@@ -273,18 +280,22 @@ export function WordleGame({
     setMessage('Проверяем слово...');
 
     try {
-      const validWord = await isRealRussianWord(normalizedGuess, wordLength);
+      const validWord =
+        WORDLE_ALLOWED_WORDS[wordLength].has(normalizedGuess) ||
+        (await isRealRussianWord(normalizedGuess, wordLength));
 
       if (!validWord) {
-        setMessage('ИИ не нашел такое русское слово. Попробуй другое.');
+        setMessage('Такого слова нет в словаре игры. Попробуй другое.');
         focusBoard();
         return;
       }
     } catch (error) {
       console.error(error instanceof Error ? error.message : 'Не получилось проверить слово через ИИ.');
-      setMessage('ИИ сейчас недоступен. Без ИИ Wordle не проверяет слова.');
-      focusBoard();
-      return;
+      if (!WORDLE_ALLOWED_WORDS[wordLength].has(normalizedGuess)) {
+        setMessage('ИИ недоступен, а такого слова нет в локальном словаре игры.');
+        focusBoard();
+        return;
+      }
     } finally {
       setCheckingWord(false);
     }
