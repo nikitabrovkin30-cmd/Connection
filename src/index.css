@@ -152,7 +152,7 @@ body {
 }
 
 .intro-card {
-  max-width: 760px;
+  max-width: 960px;
 }
 
 .intro-kicker {
@@ -172,7 +172,7 @@ body {
 
 .intro-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
 }
 
@@ -213,6 +213,10 @@ body {
 
 .association-panel {
   background: linear-gradient(135deg, #ede9fe, #fff1ea);
+}
+
+.puzzle-panel {
+  background: linear-gradient(135deg, #fff7d8, #f4efff);
 }
 
 .lobby-card {
@@ -281,7 +285,7 @@ body {
 
 .lobby-preview {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
   margin-bottom: 18px;
 }
@@ -299,9 +303,14 @@ body {
   color: var(--accent-dark);
 }
 
-.lobby-preview span:last-child {
+.lobby-preview span:nth-child(2) {
   background: linear-gradient(135deg, #ede9fe, #e8f2ed);
   color: #4c1d95;
+}
+
+.lobby-preview span:last-child {
+  background: linear-gradient(135deg, #fff7d8, #f4efff);
+  color: #7c2d12;
 }
 
 .form,
@@ -648,7 +657,7 @@ button.ghost:hover {
 
 .puzzle-actions {
   display: grid;
-  grid-template-columns: 1fr 1.2fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
   margin-top: 12px;
 }

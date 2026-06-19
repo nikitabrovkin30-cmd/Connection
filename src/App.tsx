@@ -558,7 +558,10 @@ export default function App() {
 
           {mode === 'puzzle' && (
             <PuzzleGame
+              coins={coins}
+              hintCost={HINT_COST}
               onReward={rewardSolvedWord}
+              onSpendCoins={() => spendCoins(HINT_COST)}
               rewardCoins={WIN_REWARD}
               userEmail={nickname}
             />

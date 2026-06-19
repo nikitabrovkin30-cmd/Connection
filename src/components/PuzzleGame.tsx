@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
+import { AdModal } from './AdModal';
 
 type Puzzle = {
   id: string;
@@ -17,7 +18,10 @@ type SavedPuzzleState = {
 };
 
 type PuzzleGameProps = {
+  coins: number;
+  hintCost: number;
   onReward: () => void;
+  onSpendCoins: () => boolean;
   rewardCoins: number;
   userEmail: string;
 };
@@ -184,7 +188,7 @@ function loadPuzzleState(userEmail: string): SavedPuzzleState | null {
   }
 }
 
-export function PuzzleGame({ onReward, rewardCoins, userEmail }: PuzzleGameProps) {
+export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoins, userEmail }: PuzzleGameProps) {
   const savedState = useMemo(() => loadPuzzleState(userEmail), [userEmail]);
   const initialSolvedIds = useMemo(() => new Set(savedState?.solvedIds ?? []), [savedState]);
   const initialPuzzle = useMemo(
@@ -197,6 +201,7 @@ export function PuzzleGame({ onReward, rewardCoins, userEmail }: PuzzleGameProps
   const [message, setMessage] = useState(savedState?.message ?? '');
   const [solvedIds, setSolvedIds] = useState<Set<string>>(() => initialSolvedIds);
   const [revealedHint, setRevealedHint] = useState(savedState?.revealedHint ?? false);
+  const [showAd, setShowAd] = useState(false);
 
   const solvedCurrentPuzzle = solvedIds.has(puzzle.id);
 
@@ -219,6 +224,35 @@ export function PuzzleGame({ onReward, rewardCoins, userEmail }: PuzzleGameProps
     setInputAnswer('');
     setMessage('');
     setRevealedHint(false);
+    setShowAd(false);
+  }
+
+  function revealHint() {
+    if (revealedHint || solvedCurrentPuzzle) return;
+    setRevealedHint(true);
+  }
+
+  function buyHint() {
+    if (revealedHint || solvedCurrentPuzzle) return;
+
+    if (coins < hintCost || !onSpendCoins()) {
+      setMessage(`Нужно ${hintCost} монет для подсказки.`);
+      return;
+    }
+
+    revealHint();
+    setMessage(`Подсказка куплена за ${hintCost} монет.`);
+  }
+
+  function openAdForHint() {
+    if (revealedHint || solvedCurrentPuzzle) return;
+    setShowAd(true);
+  }
+
+  function closeAdAndRevealHint() {
+    setShowAd(false);
+    revealHint();
+    setMessage('Реклама просмотрена. Подсказка открыта.');
   }
 
   function submitAnswer(e: FormEvent<HTMLFormElement>) {
@@ -278,11 +312,19 @@ export function PuzzleGame({ onReward, rewardCoins, userEmail }: PuzzleGameProps
         <div className="puzzle-actions">
           <button
             className="soft-button"
-            disabled={revealedHint || solvedCurrentPuzzle}
-            onClick={() => setRevealedHint(true)}
+            disabled={revealedHint || solvedCurrentPuzzle || coins < hintCost}
+            onClick={buyHint}
             type="button"
           >
-            Подсказка
+            Подсказка за {hintCost} монет
+          </button>
+          <button
+            className="ad-button"
+            disabled={revealedHint || solvedCurrentPuzzle || showAd}
+            onClick={openAdForHint}
+            type="button"
+          >
+            Подсказка за рекламу
           </button>
           <button className="next-button" onClick={startNextPuzzle} type="button">
             Новая загадка
@@ -295,6 +337,8 @@ export function PuzzleGame({ onReward, rewardCoins, userEmail }: PuzzleGameProps
           Разгадано: {solvedIds.size}/{PUZZLES.length}
         </p>
       </div>
+
+      {showAd && <AdModal onClose={closeAdAndRevealHint} />}
     </section>
   );
 }

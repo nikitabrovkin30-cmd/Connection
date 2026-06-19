@@ -88,6 +88,18 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
               <li>Подсказки помогают понять тему слова.</li>
             </ul>
           </article>
+
+          <article className="intro-panel puzzle-panel">
+            <h3>Puzzle</h3>
+            <p>
+              Puzzle - режим с загадками. Нужно понять описание, написать ответ одним словом и получить монеты за правильную разгадку.
+            </p>
+            <ul>
+              <li>Каждая загадка проверяет логику и внимательность.</li>
+              <li>Подсказку можно купить за монеты или открыть после рекламы.</li>
+              <li>Прогресс сохраняется, поэтому можно продолжить позже.</li>
+            </ul>
+          </article>
         </div>
 
         <button className="next-button" onClick={() => setShowIntro(false)} type="button">
@@ -106,11 +118,12 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
       </div>
 
       <h2>Вход в игру</h2>
-      <p className="auth-subtitle">Войди по mail и выбирай режим: Association или Wordle.</p>
+      <p className="auth-subtitle">Войди по mail и выбирай режим: Association, Wordle или Puzzle.</p>
 
       <div className="lobby-preview" aria-hidden="true">
         <span>Association</span>
         <span>Wordle</span>
+        <span>Puzzle</span>
       </div>
 
       <form onSubmit={handleSubmit} className="form">
