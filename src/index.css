@@ -78,7 +78,7 @@ body {
 
 .mode-tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   margin-bottom: 18px;
 }
@@ -603,6 +603,67 @@ button.ghost:hover {
   margin: 0 auto;
 }
 
+.puzzle-shell {
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.puzzle-card {
+  border-color: #decdf8;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f6f2ff 100%);
+}
+
+.puzzle-question {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 22px;
+  border: 1px solid #decdf8;
+  border-radius: 8px;
+  background: #f4efff;
+}
+
+.puzzle-question span {
+  color: #5b21b6;
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.puzzle-question strong {
+  font-size: clamp(24px, 5vw, 36px);
+  line-height: 1.15;
+}
+
+.puzzle-hint {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid #cfe2d8;
+  border-radius: 8px;
+  background: var(--soft-green);
+  color: var(--accent-dark);
+  font-weight: 700;
+}
+
+.puzzle-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.puzzle-actions .next-button {
+  margin-top: 0;
+}
+
+.puzzle-progress {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .wordle-shell .game-card {
   border-color: #bddbd1;
   background:
@@ -998,6 +1059,7 @@ button.ghost:hover {
   .guess-form,
   .round-actions,
   .wordle-actions,
+  .puzzle-actions,
   .form-row {
     flex-direction: column;
   }
@@ -1007,6 +1069,10 @@ button.ghost:hover {
   }
 
   .wordle-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .puzzle-actions {
     grid-template-columns: 1fr;
   }
 

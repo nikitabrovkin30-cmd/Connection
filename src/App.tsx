@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Auth } from './components/Auth';
 import { ConnectionGame } from './components/ConnectionGame';
+import { PuzzleGame } from './components/PuzzleGame';
 import { WordleGame } from './components/WordleGame';
 import chestImage from './assets/chest.svg';
 import { ASSOCIATION_CATEGORIES } from './data/wordBank';
@@ -18,7 +19,7 @@ const LOCAL_GAME_MODE_KEY = 'association_game_mode';
 const LOCAL_ASSOCIATION_CATEGORY_KEY = 'association_category';
 const PRODUCTION_APP_URL = 'https://connection-cyan.vercel.app';
 
-type GameMode = 'connection' | 'wordle';
+type GameMode = 'connection' | 'wordle' | 'puzzle';
 type PlayerProfile = {
   user_id: string;
   nickname: string;
@@ -32,6 +33,7 @@ function isMissingSessionError(message: string) {
 
 function loadSavedMode(): GameMode {
   const savedMode = localStorage.getItem(LOCAL_GAME_MODE_KEY);
+  if (savedMode === 'puzzle') return 'puzzle';
   return savedMode === 'wordle' ? 'wordle' : 'connection';
 }
 
@@ -500,6 +502,13 @@ export default function App() {
             >
               Wordle
             </button>
+            <button
+              className={mode === 'puzzle' ? 'mode-tab active' : 'mode-tab'}
+              onClick={() => setMode('puzzle')}
+              type="button"
+            >
+              Puzzle
+            </button>
           </div>
 
           {mode === 'connection' && (
@@ -522,7 +531,7 @@ export default function App() {
             <p className="gift-result">Из сундука выпало {lastGiftCoins} монет!</p>
           )}
 
-          {mode === 'connection' ? (
+          {mode === 'connection' && (
             <ConnectionGame
               categoryId={associationCategory}
               coins={coins}
@@ -534,12 +543,22 @@ export default function App() {
               rewardCoins={WIN_REWARD}
               userEmail={nickname}
             />
-          ) : (
+          )}
+
+          {mode === 'wordle' && (
             <WordleGame
               coins={coins}
               hintCost={HINT_COST}
               onReward={rewardSolvedWord}
               onSpendCoins={() => spendCoins(HINT_COST)}
+              rewardCoins={WIN_REWARD}
+              userEmail={nickname}
+            />
+          )}
+
+          {mode === 'puzzle' && (
+            <PuzzleGame
+              onReward={rewardSolvedWord}
               rewardCoins={WIN_REWARD}
               userEmail={nickname}
             />
