@@ -12,6 +12,7 @@ const GIFT_AMOUNTS = [40, 50, 60, 70];
 const LOCAL_GUEST_NAME = 'Гость';
 const LOCAL_GUEST_COINS_KEY = 'association_guest_coins';
 const LOCAL_GUEST_SOLVED_KEY = 'association_guest_solved_words';
+const PRODUCTION_APP_URL = 'https://connection-cyan.vercel.app';
 
 type GameMode = 'connection' | 'wordle';
 type PlayerProfile = {
@@ -27,6 +28,18 @@ function isMissingSessionError(message: string) {
 
 function getRedirectUrl() {
   const origin = window.location.origin;
+
+  if (origin.includes('localhost')) {
+    return origin;
+  }
+
+  if (origin.includes('connection-cyan.vercel.app')) {
+    return PRODUCTION_APP_URL;
+  }
+
+  if (origin.includes('vercel.app')) {
+    return PRODUCTION_APP_URL;
+  }
 
   if (origin.startsWith('http://') || origin.startsWith('https://')) {
     return origin;
