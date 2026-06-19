@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { AdModal } from './AdModal';
 
 const GUEST_HISTORY_PREFIX = 'connection_guest_history';
+const CONNECTION_STATE_PREFIX = 'connection_game_state';
 const MAX_AI_CLUES = 4;
 
 const WORD_ALIASES: Record<string, string> = {
@@ -39,6 +40,15 @@ type StoredGuess = Omit<Guess, 'distance'> & {
 type LastResult = {
   word: string;
   distance: number;
+};
+
+type SavedConnectionState = {
+  targetWord: string;
+  inputWord: string;
+  lastResult: LastResult | null;
+  message: string;
+  status: GameStatus;
+  shownClues: string[];
 };
 
 type AiTextResponse = {
@@ -145,6 +155,52 @@ function pickRandomWord(currentWord?: string) {
 
 function getGuestHistoryKey(targetWord: string) {
   return `${GUEST_HISTORY_PREFIX}_${targetWord}`;
+}
+
+function getConnectionStateKey(userEmail: string) {
+  return `${CONNECTION_STATE_PREFIX}_${userEmail}`;
+}
+
+function isGameStatus(value: unknown): value is GameStatus {
+  return value === 'playing' || value === 'won' || value === 'gave-up';
+}
+
+function loadConnectionState(userEmail: string): SavedConnectionState | null {
+  const saved = localStorage.getItem(getConnectionStateKey(userEmail));
+  if (!saved) return null;
+
+  try {
+    const parsed = JSON.parse(saved) as Partial<SavedConnectionState>;
+
+    if (
+      typeof parsed.targetWord !== 'string' ||
+      !(SECRET_WORDS as readonly string[]).includes(parsed.targetWord) ||
+      !isGameStatus(parsed.status)
+    ) {
+      return null;
+    }
+
+    const parsedLastResult = parsed.lastResult;
+    const lastResult =
+      parsedLastResult &&
+      typeof parsedLastResult.word === 'string' &&
+      typeof parsedLastResult.distance === 'number'
+        ? parsedLastResult
+        : null;
+
+    return {
+      targetWord: parsed.targetWord,
+      inputWord: typeof parsed.inputWord === 'string' ? parsed.inputWord : '',
+      lastResult,
+      message: typeof parsed.message === 'string' ? parsed.message : '',
+      status: parsed.status,
+      shownClues: Array.isArray(parsed.shownClues)
+        ? parsed.shownClues.filter((clue): clue is string => typeof clue === 'string')
+        : [],
+    };
+  } catch {
+    return null;
+  }
 }
 
 function getStableNoise(word: string, targetWord: string) {
@@ -343,14 +399,15 @@ export function ConnectionGame({
   userEmail,
   isGuest,
 }: ConnectionGameProps) {
-  const [targetWord, setTargetWord] = useState(() => pickRandomWord());
-  const [inputWord, setInputWord] = useState('');
+  const savedState = loadConnectionState(userEmail);
+  const [targetWord, setTargetWord] = useState(() => savedState?.targetWord ?? pickRandomWord());
+  const [inputWord, setInputWord] = useState(() => savedState?.inputWord ?? '');
   const [history, setHistory] = useState<Guess[]>([]);
-  const [lastResult, setLastResult] = useState<LastResult | null>(null);
-  const [message, setMessage] = useState('');
+  const [lastResult, setLastResult] = useState<LastResult | null>(() => savedState?.lastResult ?? null);
+  const [message, setMessage] = useState(() => savedState?.message ?? '');
   const [busy, setBusy] = useState(false);
-  const [status, setStatus] = useState<GameStatus>('playing');
-  const [shownClues, setShownClues] = useState<string[]>([]);
+  const [status, setStatus] = useState<GameStatus>(() => savedState?.status ?? 'playing');
+  const [shownClues, setShownClues] = useState<string[]>(() => savedState?.shownClues ?? []);
   const [clueLoading, setClueLoading] = useState(false);
   const [showAd, setShowAd] = useState(false);
   const [showWordMeaning, setShowWordMeaning] = useState(false);
@@ -384,6 +441,20 @@ export function ConnectionGame({
   useEffect(() => {
     loadHistory();
   }, [isGuest, targetWord]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      getConnectionStateKey(userEmail),
+      JSON.stringify({
+        targetWord,
+        inputWord,
+        lastResult,
+        message,
+        status,
+        shownClues,
+      } satisfies SavedConnectionState),
+    );
+  }, [inputWord, lastResult, message, shownClues, status, targetWord, userEmail]);
 
   async function saveGuestAssociation(word: string, distance: number) {
     const oldHistory = loadGuestHistory(targetWord);

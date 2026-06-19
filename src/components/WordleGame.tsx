@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import { SECRET_WORDS } from '../data/wordBank';
 import { supabase } from '../lib/supabase';
@@ -15,6 +15,16 @@ type GuessRow = {
   tiles: TileStatus[];
 };
 
+type SavedWordleState = {
+  wordLength: WordLength;
+  targetWord: string;
+  guess: string;
+  rows: GuessRow[];
+  status: GameStatus;
+  message: string;
+  hintIndex: number | null;
+};
+
 type AiTextResponse = {
   text?: string;
 };
@@ -29,6 +39,7 @@ type WordleGameProps = {
 };
 
 const MAX_ATTEMPTS = 6;
+const WORDLE_STATE_PREFIX = 'wordle_game_state';
 const RUSSIAN_ALPHABET = Array.from('абвгдежзийклмнопрстуфхцчшщъыьэюя');
 
 const WORDS: Record<WordLength, string[]> = {
@@ -77,6 +88,69 @@ const WORDLE_ALLOWED_WORDS: Record<WordLength, Set<string>> = {
 
 function normalizeWord(value: string) {
   return value.trim().toLowerCase().replace(/ё/g, 'е');
+}
+
+function getWordleStateKey(userEmail: string) {
+  return `${WORDLE_STATE_PREFIX}_${userEmail}`;
+}
+
+function isWordLength(value: unknown): value is WordLength {
+  return value === 4 || value === 5 || value === 6;
+}
+
+function isTileStatus(value: unknown): value is TileStatus {
+  return value === 'correct' || value === 'present' || value === 'absent';
+}
+
+function isGameStatus(value: unknown): value is GameStatus {
+  return value === 'playing' || value === 'won' || value === 'lost';
+}
+
+function loadWordleState(userEmail: string): SavedWordleState | null {
+  const saved = localStorage.getItem(getWordleStateKey(userEmail));
+  if (!saved) return null;
+
+  try {
+    const parsed = JSON.parse(saved) as Partial<SavedWordleState>;
+    if (
+      !isWordLength(parsed.wordLength) ||
+      typeof parsed.targetWord !== 'string' ||
+      parsed.targetWord.length !== parsed.wordLength ||
+      !isGameStatus(parsed.status)
+    ) {
+      return null;
+    }
+
+    const rows = Array.isArray(parsed.rows)
+      ? parsed.rows.filter((row): row is GuessRow => (
+          typeof row.id === 'string' &&
+          typeof row.word === 'string' &&
+          row.word.length === parsed.wordLength &&
+          Array.isArray(row.tiles) &&
+          row.tiles.length === parsed.wordLength &&
+          row.tiles.every(isTileStatus)
+        ))
+      : [];
+
+    const hintIndex =
+      typeof parsed.hintIndex === 'number' &&
+      parsed.hintIndex >= 0 &&
+      parsed.hintIndex < parsed.wordLength
+        ? parsed.hintIndex
+        : null;
+
+    return {
+      wordLength: parsed.wordLength,
+      targetWord: parsed.targetWord,
+      guess: typeof parsed.guess === 'string' ? parsed.guess.slice(0, parsed.wordLength) : '',
+      rows,
+      status: parsed.status,
+      message: typeof parsed.message === 'string' ? parsed.message : '',
+      hintIndex,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function parseWordValidation(value: string) {
@@ -193,13 +267,14 @@ export function WordleGame({
   userEmail,
 }: WordleGameProps) {
   const boardRef = useRef<HTMLDivElement>(null);
-  const [wordLength, setWordLength] = useState<WordLength>(5);
-  const [targetWord, setTargetWord] = useState(() => pickWord(5));
-  const [guess, setGuess] = useState('');
-  const [rows, setRows] = useState<GuessRow[]>([]);
-  const [status, setStatus] = useState<GameStatus>('playing');
-  const [message, setMessage] = useState('');
-  const [hintIndex, setHintIndex] = useState<number | null>(null);
+  const savedState = loadWordleState(userEmail);
+  const [wordLength, setWordLength] = useState<WordLength>(() => savedState?.wordLength ?? 5);
+  const [targetWord, setTargetWord] = useState(() => savedState?.targetWord ?? pickWord(5));
+  const [guess, setGuess] = useState(() => savedState?.guess ?? '');
+  const [rows, setRows] = useState<GuessRow[]>(() => savedState?.rows ?? []);
+  const [status, setStatus] = useState<GameStatus>(() => savedState?.status ?? 'playing');
+  const [message, setMessage] = useState(() => savedState?.message ?? '');
+  const [hintIndex, setHintIndex] = useState<number | null>(() => savedState?.hintIndex ?? null);
   const [showAd, setShowAd] = useState(false);
   const [checkingWord, setCheckingWord] = useState(false);
 
@@ -223,6 +298,21 @@ export function WordleGame({
   function focusBoard() {
     boardRef.current?.focus();
   }
+
+  useEffect(() => {
+    localStorage.setItem(
+      getWordleStateKey(userEmail),
+      JSON.stringify({
+        wordLength,
+        targetWord,
+        guess,
+        rows,
+        status,
+        message,
+        hintIndex,
+      } satisfies SavedWordleState),
+    );
+  }, [guess, hintIndex, message, rows, status, targetWord, userEmail, wordLength]);
 
   function resetGame(nextLength = wordLength) {
     setWordLength(nextLength);

@@ -12,6 +12,7 @@ const GIFT_AMOUNTS = [40, 50, 60, 70];
 const LOCAL_GUEST_NAME = 'Гость';
 const LOCAL_GUEST_COINS_KEY = 'association_guest_coins';
 const LOCAL_GUEST_SOLVED_KEY = 'association_guest_solved_words';
+const LOCAL_GAME_MODE_KEY = 'association_game_mode';
 const PRODUCTION_APP_URL = 'https://connection-cyan.vercel.app';
 
 type GameMode = 'connection' | 'wordle';
@@ -24,6 +25,11 @@ type PlayerProfile = {
 
 function isMissingSessionError(message: string) {
   return message.toLowerCase().includes('auth session missing');
+}
+
+function loadSavedMode(): GameMode {
+  const savedMode = localStorage.getItem(LOCAL_GAME_MODE_KEY);
+  return savedMode === 'wordle' ? 'wordle' : 'connection';
 }
 
 function getRedirectUrl() {
@@ -55,7 +61,7 @@ export default function App() {
   const [solvedWords, setSolvedWords] = useState(0);
   const [giftOptions, setGiftOptions] = useState<number[] | null>(null);
   const [lastGiftCoins, setLastGiftCoins] = useState<number | null>(null);
-  const [mode, setMode] = useState<GameMode>('connection');
+  const [mode, setMode] = useState<GameMode>(() => loadSavedMode());
   const [authScreenKey, setAuthScreenKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState('');
@@ -106,6 +112,10 @@ export default function App() {
       subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem(LOCAL_GAME_MODE_KEY, mode);
+  }, [mode]);
 
   function getNicknameFromEmail(email: string) {
     return email.split('@')[0] || 'Игрок';
