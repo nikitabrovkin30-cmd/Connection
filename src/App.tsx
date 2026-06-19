@@ -3,7 +3,7 @@ import { Auth } from './components/Auth';
 import { ConnectionGame } from './components/ConnectionGame';
 import { WordleGame } from './components/WordleGame';
 import chestImage from './assets/chest.svg';
-import { supabase } from './lib/supabase';
+import { supabase, supabaseConfigError } from './lib/supabase';
 
 const HINT_COST = 100;
 const WIN_REWARD = 10;
@@ -390,6 +390,20 @@ export default function App() {
     changeCoins(amount);
     setGiftOptions(null);
     setLastGiftCoins(amount);
+  }
+
+  if (supabaseConfigError) {
+    return (
+      <main className="container">
+        <section className="card lobby-card">
+          <h1>Association Wordle</h1>
+          <p className="message">{supabaseConfigError}</p>
+          <p className="auth-subtitle">
+            В Vercel открой Project Settings {'->'} Environment Variables и проверь переменные.
+          </p>
+        </section>
+      </main>
+    );
   }
 
   if (loading) {
