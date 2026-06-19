@@ -10,13 +10,19 @@ type Puzzle = {
 };
 
 type PuzzleDifficulty = 'easy' | 'medium' | 'hard';
+type PuzzleStatus = 'playing' | 'solved' | 'gave-up';
 
 type SavedPuzzleState = {
   puzzleId: string;
   inputAnswer: string;
   message: string;
   solvedIds: string[];
-  revealedHint: boolean;
+  revealedHints: number;
+  status: PuzzleStatus;
+};
+
+type LegacySavedPuzzleState = Partial<SavedPuzzleState> & {
+  revealedHint?: boolean;
 };
 
 type PuzzleGameProps = {
@@ -157,68 +163,284 @@ const EASY_PUZZLES: readonly Puzzle[] = [
     answers: ['сон'],
     hint: 'Он приходит, когда спишь.',
   },
+  {
+    id: 'umbrella',
+    question: 'Над головой раскрывается, от дождя закрывается. Что это?',
+    answers: ['зонт'],
+    hint: 'Его берут в плохую погоду.',
+  },
+  {
+    id: 'chair',
+    question: 'Стоит на ножках, а садятся на него люди. Что это?',
+    answers: ['стул'],
+    hint: 'Он часто стоит у стола.',
+  },
+  {
+    id: 'soap',
+    question: 'Пены много создаёт, грязь с ладоней уберёт. Что это?',
+    answers: ['мыло'],
+    hint: 'Им моют руки.',
+  },
+  {
+    id: 'ball',
+    question: 'Круглый, прыгает, летит, играть с собой велит. Что это?',
+    answers: ['мяч'],
+    hint: 'Его пинают или бросают.',
+  },
+  {
+    id: 'bag',
+    question: 'В школу ходит вместе с тобой и несёт тетради за спиной. Что это?',
+    answers: ['рюкзак', 'сумка'],
+    hint: 'В него кладут учебники.',
+  },
+  {
+    id: 'lamp',
+    question: 'Ночью темноту прогоняет, но сама не солнце. Что это?',
+    answers: ['лампа'],
+    hint: 'Её включают выключателем.',
+  },
+  {
+    id: 'spoon',
+    question: 'Суп набирает, но сама не ест. Что это?',
+    answers: ['ложка'],
+    hint: 'Ею пользуются за столом.',
+  },
+  {
+    id: 'bicycle',
+    question: 'Два колеса, руль и педали, а бензин ему не нужен. Что это?',
+    answers: ['велосипед'],
+    hint: 'На нём ездят, крутя педали.',
+  },
+  {
+    id: 'comb',
+    question: 'По волосам гуляет, порядок оставляет. Что это?',
+    answers: ['расческа', 'гребень'],
+    hint: 'Ею пользуются перед зеркалом.',
+  },
+  {
+    id: 'plate',
+    question: 'На столе стоит, еду держит, но сама не ест. Что это?',
+    answers: ['тарелка'],
+    hint: 'Из неё едят.',
+  },
+  {
+    id: 'pillow',
+    question: 'Мягкая, молчаливая, ночью голову встречает. Что это?',
+    answers: ['подушка'],
+    hint: 'Она лежит на кровати.',
+  },
+  {
+    id: 'door',
+    question: 'Открывается, закрывается и решает, кто войдёт. Что это?',
+    answers: ['дверь'],
+    hint: 'У неё бывает ручка.',
+  },
+  {
+    id: 'cup',
+    question: 'Чай в себе держит, но пить не умеет. Что это?',
+    answers: ['чашка', 'кружка'],
+    hint: 'Её берут за ручку.',
+  },
+  {
+    id: 'hat',
+    question: 'На голове сидит, от холода или солнца защитит. Что это?',
+    answers: ['шапка', 'кепка'],
+    hint: 'Это надевают на голову.',
+  },
+  {
+    id: 'brush',
+    question: 'Зубы чистит каждый день, но сама улыбаться не умеет. Что это?',
+    answers: ['щетка', 'щётка'],
+    hint: 'Ей пользуются с пастой.',
+  },
+  {
+    id: 'bed',
+    question: 'Днём ждёт, ночью отдых даёт. Что это?',
+    answers: ['кровать'],
+    hint: 'На ней спят.',
+  },
+  {
+    id: 'train',
+    question: 'По рельсам длинной змейкой идёт и людей везёт. Что это?',
+    answers: ['поезд'],
+    hint: 'Он приезжает на вокзал.',
+  },
+  {
+    id: 'apple',
+    question: 'Круглое, сладкое, на дереве растёт. Что это?',
+    answers: ['яблоко'],
+    hint: 'Это фрукт.',
+  },
 ];
 
 const MEDIUM_PUZZLES: readonly Puzzle[] = [
   {
     id: 'echo',
-    question: 'Отвечает тебе твоим же голосом, но своего голоса не имеет. Что это?',
+    question: 'Я возвращаю сказанное, но никогда не начинаю разговор первым. Что это?',
     answers: ['эхо'],
-    hint: 'Чаще слышно в горах или пустом помещении.',
+    hint: 'Его можно услышать там, где звук отскакивает обратно.',
   },
   {
     id: 'compass',
-    question: 'Всегда знает, где север, хотя никогда там не был. Что это?',
+    question: 'В кармане лежит маленький советчик, который молча спорит со всеми дорогами. Что это?',
     answers: ['компас'],
-    hint: 'Его берут, чтобы не заблудиться.',
+    hint: 'Он помогает выбрать направление.',
   },
   {
     id: 'calendar',
-    question: 'Каждый день теряет по листу, но не становится деревом. Что это?',
+    question: 'У него много чисел, но он не решает примеры; он стареет быстрее человека. Что это?',
     answers: ['календарь'],
-    hint: 'Он помогает считать дни.',
+    hint: 'С ним удобно ждать праздники и важные даты.',
   },
   {
     id: 'anchor',
-    question: 'Падает вниз, чтобы корабль остался на месте. Что это?',
+    question: 'Чтобы не уйти вперед, он специально падает вниз. Что это?',
     answers: ['якорь'],
-    hint: 'Связан с морем и цепью.',
+    hint: 'Его используют на воде.',
   },
   {
     id: 'password',
-    question: 'Его знают не все, но без него дверь в аккаунт закрыта. Что это?',
+    question: 'Это короткая тайна, которая открывает длинный путь внутрь. Что это?',
     answers: ['пароль'],
-    hint: 'Лучше не говорить его другим.',
+    hint: 'Без него часто не войти в аккаунт.',
   },
   {
     id: 'magnet',
-    question: 'Сам не зовет, а железо к себе притягивает. Что это?',
+    question: 'Он не просит подойти, но некоторые вещи сами идут к нему. Что это?',
     answers: ['магнит'],
-    hint: 'Он любит металл.',
+    hint: 'Лучше всего он дружит с железом.',
   },
   {
     id: 'root',
-    question: 'Его не видно над землей, но без него дерево не стоит. Что это?',
+    question: 'Спрятан ниже всех, но держит выше всех. Что это?',
     answers: ['корень'],
-    hint: 'Он держит растение и берет воду.',
+    hint: 'Это важная часть растения.',
   },
   {
     id: 'battery',
-    question: 'Когда полная, дает силу устройству, когда пустая - просит зарядку. Что это?',
+    question: 'Пока в ней есть запас, предмет живет; когда запас исчезает, предмет молчит. Что это?',
     answers: ['батарея', 'аккумулятор'],
-    hint: 'Есть в телефоне.',
+    hint: 'Ее заряжают или меняют.',
   },
   {
     id: 'thermometer',
-    question: 'Молча показывает, жарко тебе или холодно. Что это?',
+    question: 'Он не лечит, не греет и не охлаждает, но первым сообщает, что с теплом что-то не так. Что это?',
     answers: ['термометр', 'градусник'],
-    hint: 'На нем смотрят температуру.',
+    hint: 'На нем смотрят градусы.',
   },
   {
     id: 'seed',
-    question: 'Маленькое зерно, в котором спрятано будущее растение. Что это?',
+    question: 'Снаружи почти ничего, внутри целый будущий рост. Что это?',
     answers: ['семя', 'семечко'],
-    hint: 'Его сажают в землю.',
+    hint: 'Его можно посадить.',
+  },
+  {
+    id: 'ladder',
+    question: 'Она не дорога, но по ней поднимаются выше. Что это?',
+    answers: ['лестница'],
+    hint: 'У неё есть ступени.',
+  },
+  {
+    id: 'screen',
+    question: 'Сам молчит, но показывает лица, игры, фильмы и сообщения. Что это?',
+    answers: ['экран'],
+    hint: 'Он есть у телефона и компьютера.',
+  },
+  {
+    id: 'pocket',
+    question: 'Маленькая комната на одежде, где живут ключи и мелочь. Что это?',
+    answers: ['карман'],
+    hint: 'Он бывает на куртке или брюках.',
+  },
+  {
+    id: 'bridge_medium',
+    question: 'Он не берег, не лодка и не вода, но помогает перейти через реку. Что это?',
+    answers: ['мост'],
+    hint: 'Он соединяет две стороны.',
+  },
+  {
+    id: 'notebook',
+    question: 'В нём мысли становятся строками, а уроки - страницами. Что это?',
+    answers: ['тетрадь', 'блокнот'],
+    hint: 'В него пишут ручкой.',
+  },
+  {
+    id: 'traffic_light',
+    question: 'Стоит у дороги и молча говорит: стой, жди или иди. Что это?',
+    answers: ['светофор'],
+    hint: 'У него три цвета.',
+  },
+  {
+    id: 'telescope',
+    question: 'Далёкое делает ближе, особенно если смотреть в небо. Что это?',
+    answers: ['телескоп'],
+    hint: 'С ним наблюдают звёзды.',
+  },
+  {
+    id: 'thermos',
+    question: 'Держит тепло внутри, даже когда вокруг холодно. Что это?',
+    answers: ['термос'],
+    hint: 'В него наливают чай или кофе.',
+  },
+  {
+    id: 'dictionary',
+    question: 'В нём живут слова, но сам он почти никогда не разговаривает. Что это?',
+    answers: ['словарь'],
+    hint: 'В нём ищут значение слова.',
+  },
+  {
+    id: 'elevator',
+    question: 'Комната без мебели, которая возит людей вверх и вниз. Что это?',
+    answers: ['лифт'],
+    hint: 'В нём нажимают кнопку этажа.',
+  },
+  {
+    id: 'fountain',
+    question: 'Стоит на месте, но воду вверх отправляет. Что это?',
+    answers: ['фонтан'],
+    hint: 'Его часто ставят в парке или на площади.',
+  },
+  {
+    id: 'wallet',
+    question: 'Маленький домик для денег и карточек. Что это?',
+    answers: ['кошелек', 'кошелёк'],
+    hint: 'Его носят в сумке или кармане.',
+  },
+  {
+    id: 'glasses',
+    question: 'Сидят на носу и помогают миру стать чётче. Что это?',
+    answers: ['очки'],
+    hint: 'Их носят для зрения.',
+  },
+  {
+    id: 'microphone',
+    question: 'Голос делает громче, но сам песни не поёт. Что это?',
+    answers: ['микрофон'],
+    hint: 'Его держат на сцене.',
+  },
+  {
+    id: 'compass_school',
+    question: 'Рисует круги ровно, хотя сам не художник. Что это?',
+    answers: ['циркуль'],
+    hint: 'Его используют на геометрии.',
+  },
+  {
+    id: 'backpack',
+    question: 'У него есть лямки, а внутри часто живёт школьный день. Что это?',
+    answers: ['рюкзак'],
+    hint: 'Его носят за спиной.',
+  },
+  {
+    id: 'receipt',
+    question: 'После покупки появляется маленькая бумажная память. Что это?',
+    answers: ['чек'],
+    hint: 'Его дают на кассе.',
+  },
+  {
+    id: 'keyboard',
+    question: 'Много кнопок в ряд, а из них рождаются слова на экране. Что это?',
+    answers: ['клавиатура'],
+    hint: 'Ею печатают текст.',
   },
 ];
 
@@ -283,6 +505,114 @@ const HARD_PUZZLES: readonly Puzzle[] = [
     answers: ['граница'],
     hint: 'Она отделяет одно от другого.',
   },
+  {
+    id: 'balance',
+    question: 'Он исчезает, если одна сторона берет слишком много. Что это?',
+    answers: ['баланс', 'равновесие'],
+    hint: 'Он связан с равными силами или весом.',
+  },
+  {
+    id: 'habit',
+    question: 'Сначала ты делаешь это сам, потом оно будто делает тебя. Что это?',
+    answers: ['привычка'],
+    hint: 'Она появляется от повторения.',
+  },
+  {
+    id: 'horizon',
+    question: 'Ты идёшь к нему, а он всё равно остаётся впереди. Что это?',
+    answers: ['горизонт'],
+    hint: 'Он виден вдали.',
+  },
+  {
+    id: 'doubt',
+    question: 'Он не запрещает идти, но заставляет остановиться внутри. Что это?',
+    answers: ['сомнение'],
+    hint: 'Оно появляется, когда нет уверенности.',
+  },
+  {
+    id: 'experience',
+    question: 'Его нельзя купить сразу, но можно получить через ошибки и время. Что это?',
+    answers: ['опыт'],
+    hint: 'Он помогает действовать умнее.',
+  },
+  {
+    id: 'trace',
+    question: 'Он остаётся после того, кто уже ушёл. Что это?',
+    answers: ['след'],
+    hint: 'Его можно увидеть на снегу или в памяти.',
+  },
+  {
+    id: 'rule',
+    question: 'Оно ограничивает действие, чтобы всем было понятнее, как играть или жить. Что это?',
+    answers: ['правило'],
+    hint: 'Его можно соблюдать или нарушить.',
+  },
+  {
+    id: 'mask',
+    question: 'Она показывает лицо, пряча лицо. Что это?',
+    answers: ['маска'],
+    hint: 'Её надевают, чтобы скрыться или сыграть роль.',
+  },
+  {
+    id: 'reputation',
+    question: 'Её строят поступками, а разрушить может одно слово. Что это?',
+    answers: ['репутация'],
+    hint: 'Она связана с тем, как тебя видят другие.',
+  },
+  {
+    id: 'compromise',
+    question: 'Когда обе стороны немного уступают, появляется он. Что это?',
+    answers: ['компромисс'],
+    hint: 'Он помогает закончить спор.',
+  },
+  {
+    id: 'contradiction',
+    question: 'Внутри него две мысли толкаются и не могут быть правдой вместе. Что это?',
+    answers: ['противоречие'],
+    hint: 'Оно появляется, когда одно мешает другому.',
+  },
+  {
+    id: 'responsibility',
+    question: 'Её берут на себя, когда последствия тоже становятся твоими. Что это?',
+    answers: ['ответственность'],
+    hint: 'Она связана с выбором и обязанностью.',
+  },
+  {
+    id: 'intuition',
+    question: 'Она подсказывает без доказательств, но иногда попадает точно. Что это?',
+    answers: ['интуиция'],
+    hint: 'Это внутреннее чувство.',
+  },
+  {
+    id: 'patience',
+    question: 'Оно нужно, когда хочется быстрее, но приходится ждать спокойно. Что это?',
+    answers: ['терпение'],
+    hint: 'Без него трудно ждать.',
+  },
+  {
+    id: 'paradox',
+    question: 'Он звучит неправильно, но заставляет думать глубже. Что это?',
+    answers: ['парадокс'],
+    hint: 'Это странная мысль с неожиданным смыслом.',
+  },
+  {
+    id: 'perspective',
+    question: 'Меняется точка взгляда - меняется и она. Что это?',
+    answers: ['перспектива'],
+    hint: 'Она связана с тем, откуда смотреть.',
+  },
+  {
+    id: 'discipline',
+    question: 'Она держит порядок, даже когда настроение ушло гулять. Что это?',
+    answers: ['дисциплина'],
+    hint: 'Она помогает делать дело регулярно.',
+  },
+  {
+    id: 'curiosity',
+    question: 'Из-за него вопрос открывает дверь к новому знанию. Что это?',
+    answers: ['любопытство'],
+    hint: 'Оно заставляет узнавать больше.',
+  },
 ];
 
 const PUZZLES_BY_DIFFICULTY: Record<PuzzleDifficulty, readonly Puzzle[]> = {
@@ -291,8 +621,145 @@ const PUZZLES_BY_DIFFICULTY: Record<PuzzleDifficulty, readonly Puzzle[]> = {
   hard: HARD_PUZZLES,
 };
 
+function getMaxPuzzleHints(difficulty: PuzzleDifficulty) {
+  return difficulty === 'hard' ? 2 : 1;
+}
+
+const EXTRA_PUZZLE_HINTS: Record<string, readonly string[]> = {
+  shadow: ['Ее форма меняется в течение дня.', 'Без света ее почти невозможно увидеть.'],
+  clock: ['Этот предмет связан с минутами.', 'Он помогает не опоздать.'],
+  book: ['Внутри много страниц.', 'Она может быть бумажной или электронной.'],
+  river: ['Это движется по руслу.', 'На карте часто выглядит как синяя линия.'],
+  key: ['Обычно его носят в кармане или на связке.', 'Без него замок не откроется.'],
+  snow: ['Он холодный и мягкий.', 'Из него можно слепить ком.'],
+  mirror: ['Оно возвращает изображение.', 'Часто висит в ванной или прихожей.'],
+  fire: ['Он опасен без контроля.', 'От него остается пепел.'],
+  road: ['По ней идут, едут и путешествуют.', 'Она соединяет места.'],
+  phone: ['В нем есть экран.', 'Он помогает говорить на расстоянии.'],
+  sun: ['Без него днем было бы темно.', 'Оно находится в небе.'],
+  pencil: ['У него есть грифель.', 'Его можно заточить.'],
+  window: ['Через него проходит свет.', 'Оно бывает открытым или закрытым.'],
+  letter: ['Из таких знаков собирают слова.', 'Она бывает строчной и заглавной.'],
+  cloud: ['Оно закрывает солнце.', 'Может быть белым или темным.'],
+  needle: ['Она проходит через ткань.', 'С ней часто используют нитку.'],
+  bridge: ['Он помогает перейти через препятствие.', 'Может быть через реку или дорогу.'],
+  map: ['На ней ищут маршрут.', 'Она показывает места сверху.'],
+  candle: ['Она горит маленьким пламенем.', 'Ее используют, когда нужен мягкий свет.'],
+  dream: ['Это происходит во сне.', 'Иногда его трудно вспомнить утром.'],
+  umbrella: ['Его раскрывают над собой.', 'Он защищает от капель.'],
+  chair: ['У него есть сиденье.', 'Он нужен, чтобы не стоять.'],
+  soap: ['Оно скользкое, когда мокрое.', 'После него руки становятся чище.'],
+  ball: ['Он часто бывает круглым.', 'С ним играют во дворе или спортзале.'],
+  bag: ['Его носят на плечах или в руке.', 'Внутри могут лежать книги.'],
+  lamp: ['Она дает искусственный свет.', 'Может стоять на столе или висеть на потолке.'],
+  spoon: ['Она лежит рядом с тарелкой.', 'Ею удобно есть жидкую еду.'],
+  bicycle: ['У него два колеса.', 'Он едет от силы ног.'],
+  comb: ['У неё много зубчиков.', 'Она помогает уложить волосы.'],
+  plate: ['Она бывает глубокой или плоской.', 'Её ставят перед едой.'],
+  pillow: ['Она мягкая и прямоугольная.', 'На ней удобно лежать головой.'],
+  door: ['Она может быть закрытой или открытой.', 'Через неё проходят в комнату.'],
+  cup: ['В неё наливают напиток.', 'Она часто стоит на блюдце.'],
+  hat: ['Она бывает зимней или летней.', 'Её снимают в помещении.'],
+  brush: ['У неё есть щетинки.', 'Она нужна утром и вечером.'],
+  bed: ['У неё есть матрас.', 'Она связана со сном.'],
+  train: ['У него много вагонов.', 'Он движется по рельсам.'],
+  apple: ['У него бывает кожура и сердцевина.', 'Оно может быть красным или зелёным.'],
+  echo: ['Оно появляется после громкого звука.', 'Это не новый голос, а возвращение старого.'],
+  compass: ['У него есть стрелка.', 'Он связан со сторонами света.'],
+  calendar: ['В нем есть месяцы.', 'Он помогает помнить дату.'],
+  anchor: ['Он тяжелый.', 'Его бросают с корабля.'],
+  password: ['Его лучше делать сложным.', 'Он защищает доступ.'],
+  magnet: ['Он может прилипать к металлу.', 'У него есть невидимая сила притяжения.'],
+  root: ['Он находится под землей.', 'Через него растение получает воду.'],
+  battery: ['В ней хранится энергия.', 'Когда она садится, устройство выключается.'],
+  thermometer: ['Он показывает число.', 'Его используют при болезни или погоде.'],
+  seed: ['Из него может вырасти растение.', 'Оно маленькое, но живое внутри.'],
+  ladder: ['По ней идут вверх или вниз.', 'Она помогает достать что-то высоко.'],
+  screen: ['Он светится и показывает картинку.', 'На него долго смотрят во время игры или фильма.'],
+  pocket: ['Он пришит к одежде.', 'В него можно спрятать маленькую вещь.'],
+  bridge_medium: ['Он находится над препятствием.', 'По нему можно перейти с одной стороны на другую.'],
+  notebook: ['Внутри у него страницы.', 'Он нужен для записей.'],
+  traffic_light: ['Он управляет движением.', 'Красный, желтый и зеленый помогают понять команду.'],
+  telescope: ['Он нужен для дальнего взгляда.', 'Через него рассматривают космос.'],
+  thermos: ['Он похож на бутылку, но сохраняет температуру.', 'Его берут в дорогу.'],
+  dictionary: ['Он стоит рядом с языком и словами.', 'В нём слова идут по порядку.'],
+  elevator: ['Он находится внутри здания.', 'В нём двери открываются сами.'],
+  fountain: ['В нём вода движется красиво.', 'Он часто украшает место.'],
+  wallet: ['Он маленький и складной.', 'В нём могут лежать монеты.'],
+  glasses: ['У них есть две линзы.', 'Они помогают лучше видеть.'],
+  microphone: ['Он принимает звук.', 'Его используют ведущие и певцы.'],
+  compass_school: ['У него есть игла или карандаш.', 'Он связан с окружностью.'],
+  backpack: ['У него есть карманы.', 'Его часто берут в школу.'],
+  receipt: ['Он подтверждает покупку.', 'На нём указана цена.'],
+  keyboard: ['На ней есть буквы.', 'Она лежит перед экраном.'],
+  silence: ['Ее можно услышать только когда ничего не звучит.', 'Она исчезает, если начать говорить.'],
+  time: ['Его считают секундами и минутами.', 'Оно всегда идет вперед.'],
+  secret: ['Его скрывают от других.', 'Если рассказать всем, он перестает быть таким.'],
+  promise: ['Оно связано с доверием.', 'Его можно выполнить или нарушить.'],
+  memory: ['Она хранит события.', 'Она помогает вспоминать.'],
+  choice: ['Он появляется, когда есть варианты.', 'После него путь может измениться.'],
+  thought: ['Она появляется в голове.', 'Из нее может родиться идея.'],
+  name: ['Им называют человека или предмет.', 'Оно помогает отличать одного от другого.'],
+  question: ['Он требует ответа.', 'В конце него часто ставят особый знак.'],
+  border: ['Она разделяет две стороны.', 'Ее можно провести на карте или в правилах.'],
+  balance: ['Его легко нарушить перекосом.', 'Он важен в весах, спорте и решениях.'],
+  habit: ['Она становится автоматической.', 'Она может быть полезной или вредной.'],
+  horizon: ['Он виден там, где небо будто встречается с землей.', 'К нему нельзя дойти до конца.'],
+  doubt: ['Оно спорит с уверенностью.', 'Из-за него человек перепроверяет решение.'],
+  experience: ['Он приходит после практики.', 'Чем больше пробуешь, тем больше его становится.'],
+  trace: ['Он показывает, что кто-то был здесь.', 'Он может быть физическим или переносным.'],
+  rule: ['Оно задает порядок.', 'В игре без него было бы непонятно, что можно делать.'],
+  mask: ['Ее надевают на лицо.', 'Она может скрывать или изображать другого.'],
+  reputation: ['Она растёт из доверия.', 'Её можно испортить плохим поступком.'],
+  compromise: ['В нём никто не получает всё полностью.', 'Он помогает договориться.'],
+  contradiction: ['В нём части не сходятся.', 'Оно делает мысль спорной.'],
+  responsibility: ['Она появляется вместе с последствиями.', 'Её нельзя просто переложить без причины.'],
+  intuition: ['Она работает без длинных объяснений.', 'Её часто называют внутренним голосом.'],
+  patience: ['Оно помогает не сорваться.', 'Оно нужно при ожидании.'],
+  paradox: ['Он кажется невозможным.', 'Он заставляет пересмотреть привычную логику.'],
+  perspective: ['Она меняется вместе с углом зрения.', 'В рисунке она создаёт глубину.'],
+  discipline: ['Она держится на повторении.', 'Она помогает не бросать начатое.'],
+  curiosity: ['Она начинается с вопроса.', 'Она тянет к новому знанию.'],
+};
+
 function normalizeAnswer(value: string) {
   return value.trim().toLowerCase().replace(/ё/g, 'е');
+}
+
+function getLetterHint(answer: string) {
+  const normalizedAnswer = normalizeAnswer(answer);
+  return `Ответ начинается на "${normalizedAnswer[0]}" и состоит из ${normalizedAnswer.length} букв.`;
+}
+
+function getEndingHint(answer: string) {
+  const normalizedAnswer = normalizeAnswer(answer);
+  return `Последняя буква ответа - "${normalizedAnswer[normalizedAnswer.length - 1]}".`;
+}
+
+function getVowelHint(answer: string) {
+  const normalizedAnswer = normalizeAnswer(answer);
+  const vowelCount = normalizedAnswer.match(/[аеёиоуыэюя]/g)?.length ?? 0;
+  return `В ответе ${vowelCount} ${vowelCount === 1 ? 'гласная' : vowelCount > 1 && vowelCount < 5 ? 'гласные' : 'гласных'}.`;
+}
+
+function getPatternHint(answer: string) {
+  const letters = Array.from(normalizeAnswer(answer));
+  const pattern = letters
+    .map((letter, index) => (index === 0 || index === letters.length - 1 || index % 3 === 1 ? letter : '_'))
+    .join(' ');
+
+  return `Часть слова: ${pattern}.`;
+}
+
+function getPuzzleHints(puzzle: Puzzle, difficulty: PuzzleDifficulty) {
+  return [
+    puzzle.hint,
+    ...(EXTRA_PUZZLE_HINTS[puzzle.id] ?? []),
+    getLetterHint(puzzle.answers[0]),
+    getEndingHint(puzzle.answers[0]),
+    getVowelHint(puzzle.answers[0]),
+    getPatternHint(puzzle.answers[0]),
+  ].slice(0, getMaxPuzzleHints(difficulty));
 }
 
 function getPuzzleStateKey(userEmail: string, difficulty: PuzzleDifficulty) {
@@ -315,17 +782,30 @@ function loadPuzzleState(userEmail: string, difficulty: PuzzleDifficulty): Saved
   if (!saved) return null;
 
   try {
-    const parsed = JSON.parse(saved) as Partial<SavedPuzzleState>;
+    const parsed = JSON.parse(saved) as LegacySavedPuzzleState;
     if (typeof parsed.puzzleId !== 'string') return null;
+    const savedSolvedIds = Array.isArray(parsed.solvedIds)
+      ? parsed.solvedIds.filter((id): id is string => typeof id === 'string')
+      : [];
+    const solvedByLegacy = savedSolvedIds.includes(parsed.puzzleId);
 
     return {
       puzzleId: parsed.puzzleId,
       inputAnswer: typeof parsed.inputAnswer === 'string' ? parsed.inputAnswer : '',
       message: typeof parsed.message === 'string' ? parsed.message : '',
-      solvedIds: Array.isArray(parsed.solvedIds)
-        ? parsed.solvedIds.filter((id): id is string => typeof id === 'string')
-        : [],
-      revealedHint: parsed.revealedHint === true,
+      solvedIds: savedSolvedIds,
+      revealedHints:
+        typeof parsed.revealedHints === 'number'
+          ? Math.min(getMaxPuzzleHints(difficulty), Math.max(0, parsed.revealedHints))
+          : parsed.revealedHint === true
+            ? 1
+            : 0,
+      status:
+        parsed.status === 'solved' || parsed.status === 'gave-up' || parsed.status === 'playing'
+          ? parsed.status
+          : solvedByLegacy
+            ? 'solved'
+            : 'playing',
     };
   } catch {
     return null;
@@ -343,7 +823,8 @@ function createInitialPuzzleState(userEmail: string, difficulty: PuzzleDifficult
     inputAnswer: savedState?.inputAnswer ?? '',
     message: savedState?.message ?? '',
     solvedIds,
-    revealedHint: savedState?.revealedHint ?? false,
+    revealedHints: savedState?.revealedHints ?? 0,
+    status: savedState?.status ?? (solvedIds.has(puzzle.id) ? 'solved' : 'playing'),
   };
 }
 
@@ -355,11 +836,15 @@ export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoin
   const [inputAnswer, setInputAnswer] = useState(initialState.inputAnswer);
   const [message, setMessage] = useState(initialState.message);
   const [solvedIds, setSolvedIds] = useState<Set<string>>(() => initialState.solvedIds);
-  const [revealedHint, setRevealedHint] = useState(initialState.revealedHint);
+  const [revealedHints, setRevealedHints] = useState(initialState.revealedHints);
+  const [status, setStatus] = useState<PuzzleStatus>(initialState.status);
   const [showAd, setShowAd] = useState(false);
 
   const puzzles = PUZZLES_BY_DIFFICULTY[difficulty];
-  const solvedCurrentPuzzle = solvedIds.has(puzzle.id);
+  const roundFinished = status !== 'playing';
+  const puzzleHints = getPuzzleHints(puzzle, difficulty);
+  const shownHints = puzzleHints.slice(0, revealedHints);
+  const hasMoreHints = revealedHints < puzzleHints.length;
 
   useEffect(() => {
     const nextState = createInitialPuzzleState(userEmail, difficulty);
@@ -367,7 +852,8 @@ export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoin
     setInputAnswer(nextState.inputAnswer);
     setMessage(nextState.message);
     setSolvedIds(nextState.solvedIds);
-    setRevealedHint(nextState.revealedHint);
+    setRevealedHints(nextState.revealedHints);
+    setStatus(nextState.status);
     setShowAd(false);
   }, [difficulty, userEmail]);
 
@@ -379,53 +865,63 @@ export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoin
         inputAnswer,
         message,
         solvedIds: Array.from(solvedIds),
-        revealedHint,
+        revealedHints,
+        status,
       } satisfies SavedPuzzleState),
     );
-  }, [difficulty, inputAnswer, message, puzzle.id, revealedHint, solvedIds, userEmail]);
+  }, [difficulty, inputAnswer, message, puzzle.id, revealedHints, solvedIds, status, userEmail]);
 
   function startNextPuzzle() {
     const nextPuzzle = pickPuzzle(puzzles, solvedIds, puzzle.id);
     setPuzzle(nextPuzzle);
     setInputAnswer('');
     setMessage('');
-    setRevealedHint(false);
+    setRevealedHints(0);
+    setStatus('playing');
     setShowAd(false);
   }
 
-  function revealHint() {
-    if (revealedHint || solvedCurrentPuzzle) return;
-    setRevealedHint(true);
+  function revealNextHint() {
+    if (!hasMoreHints || roundFinished) return;
+    setRevealedHints((currentHints) => Math.min(puzzleHints.length, currentHints + 1));
   }
 
   function buyHint() {
-    if (revealedHint || solvedCurrentPuzzle) return;
+    if (!hasMoreHints || roundFinished) return;
 
     if (coins < hintCost || !onSpendCoins()) {
       setMessage(`Нужно ${hintCost} монет для подсказки.`);
       return;
     }
 
-    revealHint();
+    revealNextHint();
     setMessage(`Подсказка куплена за ${hintCost} монет.`);
   }
 
   function openAdForHint() {
-    if (revealedHint || solvedCurrentPuzzle) return;
+    if (!hasMoreHints || roundFinished) return;
     setShowAd(true);
   }
 
   function closeAdAndRevealHint() {
     setShowAd(false);
-    revealHint();
+    revealNextHint();
     setMessage('Реклама просмотрена. Подсказка открыта.');
+  }
+
+  function giveUp() {
+    if (roundFinished) return;
+    setStatus('gave-up');
+    setInputAnswer('');
+    setShowAd(false);
+    setMessage(`Ответ был: ${puzzle.answers[0]}. Попробуй следующую загадку.`);
   }
 
   function submitAnswer(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     const normalizedAnswer = normalizeAnswer(inputAnswer);
-    if (!normalizedAnswer || solvedCurrentPuzzle) return;
+    if (!normalizedAnswer || roundFinished) return;
 
     const correct = puzzle.answers.some((answer) => normalizeAnswer(answer) === normalizedAnswer);
 
@@ -441,6 +937,7 @@ export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoin
       onReward();
       return nextSolvedIds;
     });
+    setStatus('solved');
     setMessage(`Верно! Ответ: ${puzzle.answers[0]}. +${rewardCoins} монет.`);
   }
 
@@ -471,11 +968,15 @@ export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoin
           <strong>{puzzle.question}</strong>
         </div>
 
-        {revealedHint && <p className="puzzle-hint">{puzzle.hint}</p>}
+        {shownHints.map((hint, index) => (
+          <p className="puzzle-hint" key={`${puzzle.id}-${index}`}>
+            Подсказка {index + 1}: {hint}
+          </p>
+        ))}
 
         <form className="guess-form" onSubmit={submitAnswer}>
           <input
-            disabled={solvedCurrentPuzzle}
+            disabled={roundFinished}
             onChange={(e) => {
               setInputAnswer(e.target.value);
               setMessage('');
@@ -483,7 +984,7 @@ export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoin
             placeholder="ответ"
             value={inputAnswer}
           />
-          <button disabled={solvedCurrentPuzzle} type="submit">
+          <button disabled={roundFinished} type="submit">
             Проверить
           </button>
         </form>
@@ -491,7 +992,7 @@ export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoin
         <div className="puzzle-actions">
           <button
             className="soft-button"
-            disabled={revealedHint || solvedCurrentPuzzle || coins < hintCost}
+            disabled={!hasMoreHints || roundFinished || coins < hintCost}
             onClick={buyHint}
             type="button"
           >
@@ -499,18 +1000,32 @@ export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoin
           </button>
           <button
             className="ad-button"
-            disabled={revealedHint || solvedCurrentPuzzle || showAd}
+            disabled={!hasMoreHints || roundFinished || showAd}
             onClick={openAdForHint}
             type="button"
           >
             Подсказка за рекламу
           </button>
-          <button className="next-button" onClick={startNextPuzzle} type="button">
-            Новая загадка
-          </button>
+          {!roundFinished && (
+            <button className="danger-button" onClick={giveUp} type="button">
+              Сдаться
+            </button>
+          )}
+          {roundFinished && (
+            <button className="next-button" onClick={startNextPuzzle} type="button">
+              Новая загадка
+            </button>
+          )}
         </div>
 
-        {message && <p className={solvedCurrentPuzzle ? 'success-message' : 'message'}>{message}</p>}
+        {roundFinished && (
+          <div className={status === 'solved' ? 'puzzle-answer-reveal solved' : 'puzzle-answer-reveal gave-up'}>
+            <span>{status === 'solved' ? 'Правильный ответ' : 'Ответ был'}</span>
+            <strong>{puzzle.answers[0]}</strong>
+          </div>
+        )}
+
+        {message && <p className={status === 'solved' ? 'success-message' : 'message'}>{message}</p>}
 
         <p className="puzzle-progress">
           Разгадано: {solvedIds.size}/{puzzles.length}

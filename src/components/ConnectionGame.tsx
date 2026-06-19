@@ -59,6 +59,33 @@ type AiTextResponse = {
   text?: string;
 };
 
+const STALE_CLUE_REPLACEMENTS: Record<string, string> = {
+  'Ищи среди воды, неба, погоды, растений или животных.':
+    'Тема связана с тем, что встречается снаружи: живое, природное, небесное или погодное.',
+  'Ищи среди продуктов, напитков, вкусов или кухонных вещей.':
+    'Тема рядом с кухней, вкусом, едой, напитками или тем, что кладут на стол.',
+  'Ищи среди мест, зданий, комнат или пространств.':
+    'Это может быть точка на карте, помещение, здание или пространство, куда можно попасть.',
+  'Ищи среди вещей, которые можно взять, носить или использовать.':
+    'Подумай о вещах из дома, школы, сумки, комнаты или рабочего стола.',
+  'Ищи среди материалов, деталей, ремонта, транспорта или вещей, которые делают на заводе.':
+    'Тема ближе к технике, деталям, материалам, ремонту, движению или производству.',
+  'Ищи среди людей, чувств, событий, занятий или идей.':
+    'Ответ связан с человеком: ролью, чувством, событием, занятием, мыслью или жизненной ситуацией.',
+};
+
+function normalizeSavedClue(clue: string) {
+  if (clue.includes('Близкое слово')) {
+    return 'Тема ответа раскрывается через категорию и следующие подсказки.';
+  }
+
+  return STALE_CLUE_REPLACEMENTS[clue] ?? clue;
+}
+
+function isStaleCloseWordClue(clue: string) {
+  return clue.includes('Близкое слово');
+}
+
 type ConnectionGameProps = {
   categoryId: AssociationCategoryId;
   coins: number;
@@ -238,7 +265,9 @@ function loadConnectionState(userEmail: string, categoryId: AssociationCategoryI
       message: typeof parsed.message === 'string' ? parsed.message : '',
       status: parsed.status,
       shownClues: Array.isArray(parsed.shownClues)
-        ? parsed.shownClues.filter((clue): clue is string => typeof clue === 'string')
+        ? parsed.shownClues
+            .filter((clue): clue is string => typeof clue === 'string')
+            .map(normalizeSavedClue)
         : [],
     };
   } catch {
@@ -377,12 +406,12 @@ async function getAiClue(word: string, clueIndex: number) {
   const cacheKey = getClueCacheKey(word, clueIndex);
   const cachedClue = readCacheValue(cacheKey);
 
-  if (cachedClue) {
+  if (cachedClue && !isStaleCloseWordClue(cachedClue)) {
     return cachedClue;
   }
 
   const clueStyle = [
-    'Дай одно близкое по смыслу слово-подсказку, которое было бы примерно на расстоянии 25-30 от секрета в игре. Оно должно быть из той же темы, но не слишком очевидное. Формат ответа: "Близкое слово: слово".',
+    'Дай короткую тематическую подсказку без близкого слова. Опиши область, где можно встретить ответ, но не называй сам ответ, его часть, первую букву или однокоренные слова.',
     'Дай простую ситуацию, где это можно встретить или использовать. Не называй само слово.',
     'Дай 2-3 близкие ассоциации, но не само слово и не однокоренные слова.',
   ][clueIndex] ?? 'Дай понятную подсказку, не называя само слово.';
@@ -615,7 +644,7 @@ export function ConnectionGame({
     setLastResult(null);
     setInputWord('');
     setShowAd(false);
-    setMessage(`Ответ был: ${targetWord}. Попробуй следующее слово.`);
+    setMessage('Ты сдался. Попробуй следующее слово.');
   }
 
   async function submitWord(e: FormEvent<HTMLFormElement>) {
@@ -634,7 +663,7 @@ export function ConnectionGame({
       setStatus('won');
       setLastResult(null);
       onReward();
-      setMessage(`Победа! Ты угадал слово: ${targetWord}. +${rewardCoins} монет.`);
+      setMessage(`Победа! +${rewardCoins} монет.`);
       setInputWord('');
       setBusy(false);
       return;
@@ -712,7 +741,7 @@ export function ConnectionGame({
 
         <div className="target-box">
           <span>Секретное слово</span>
-          <strong>{roundFinished ? targetWord : '??????'}</strong>
+          <strong>??????</strong>
           {categoryId !== 'all' && (
             <p className="word-category">
               Категория: <b>{targetCategory.title}</b>
@@ -792,9 +821,15 @@ export function ConnectionGame({
         )}
 
         {roundFinished && (
-          <button className="next-button" onClick={startNextRound}>
-            Новое слово
-          </button>
+          <>
+            <div className={status === 'won' ? 'answer-reveal solved' : 'answer-reveal gave-up'}>
+              <span>{status === 'won' ? 'Правильное слово' : 'Ответ был'}</span>
+              <strong>{targetWord}</strong>
+            </div>
+            <button className="next-button" onClick={startNextRound}>
+              Новое слово
+            </button>
+          </>
         )}
       </div>
 

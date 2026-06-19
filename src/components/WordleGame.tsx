@@ -55,6 +55,12 @@ const WORDS: Record<WordLength, string[]> = {
     'хлеб', 'окно', 'рыба', 'каша', 'соль', 'день', 'ночь', 'свет',
     'тень', 'шкаф', 'стул', 'друг', 'врач', 'ключ', 'кран', 'метр',
     'язык', 'рука', 'нога', 'глаз', 'диск', 'кино', 'клей', 'клен',
+    'бант', 'бобр', 'борт', 'брат', 'брус', 'бусы', 'ваза', 'веко', 'вкус', 'гимн',
+    'град', 'гусь', 'дача', 'душа', 'жаба', 'знак', 'зонт', 'изба', 'кадр', 'каша',
+    'кедр', 'клад', 'клуб', 'кожа', 'корм', 'край', 'круг', 'куст', 'лифт', 'лучи',
+    'медь', 'нить', 'нора', 'парк', 'пена', 'пила', 'плот',
+    'пруд', 'пыль', 'роль', 'сено', 'сила', 'такт', 'танк',
+    'труд', 'утка', 'флаг', 'хлеб', 'храм', 'цель',
   ],
   5: [
     'школа', 'город', 'музей', 'театр', 'книга', 'поезд', 'океан', 'ветер',
@@ -64,6 +70,13 @@ const WORDS: Record<WordLength, string[]> = {
     'дождь', 'закон', 'замок', 'камин', 'камыш', 'катер', 'ковер', 'маска',
     'месяц', 'мечта', 'мотор', 'палец', 'песок', 'рынок', 'салат', 'север',
     'сумка', 'топор', 'номер', 'ответ', 'пакет', 'парус', 'перец', 'сосна',
+    'арбуз', 'банан', 'банка', 'башня', 'белка', 'бетон', 'билет', 'блеск', 'бочка', 'броня',
+    'будка', 'вагон', 'ванна', 'весна', 'ветка', 'вишня', 'волна', 'ворон', 'выбор', 'гараж',
+    'глина', 'голод', 'гонка', 'гость', 'грань', 'грязь', 'дверь', 'длина',
+    'доска', 'драка', 'дымка', 'жажда', 'жизнь', 'забор', 'завод', 'закат',
+    'залив', 'зверь', 'зерно', 'зубец', 'камин', 'камыш', 'карта', 'касса', 'каток',
+    'киоск', 'класс', 'книга', 'козёл', 'конец', 'кошка', 'кулак', 'лаваш', 'линия',
+    'лодка', 'маска', 'метро', 'место', 'мышка', 'народ', 'олень', 'орден',
   ],
   6: [
     'космос', 'дружба', 'музыка', 'камень', 'дорога', 'машина', 'огурец', 'ракета',
@@ -81,6 +94,14 @@ const WORDS: Record<WordLength, string[]> = {
     'порция', 'портал', 'посуда', 'пример', 'проект', 'размер', 'резина', 'родина',
     'рубаха', 'свечка', 'сигнал', 'сказка', 'стекло', 'сумрак', 'улыбка', 'фактор',
     'фигура', 'фонтан', 'хижина', 'чердак', 'чеснок', 'январь',
+    'август', 'ананас', 'барьер', 'бензин',
+    'бизнес', 'блюдце', 'борода', 'веерок', 'версия',
+    'власть', 'восход', 'глоток', 'гнездо',
+    'дворик', 'десерт', 'диалог', 'доклад', 'доспех', 'желток',
+    'здание', 'золото', 'зрение', 'кабель',
+    'карета', 'кирпич', 'кнопка', 'компас',
+    'корень', 'краска', 'крышка', 'кувшин', 'лагерь', 'лебедь', 'лекция', 'лопата',
+    'медуза', 'микроб', 'молния',
   ],
 };
 
@@ -94,6 +115,18 @@ const WORDLE_ALLOWED_WORDS: Record<WordLength, Set<string>> = {
 
 function normalizeWord(value: string) {
   return value.trim().toLowerCase().replace(/ё/g, 'е');
+}
+
+function isPlausibleOfflineRussianWord(word: string, length: WordLength) {
+  if (word.length !== length || !/^[а-я]+$/.test(word)) return false;
+
+  const uniqueLetters = new Set(word);
+  if (uniqueLetters.size === 1) return false;
+
+  const vowels = word.match(/[аеёиоуыэюя]/g)?.length ?? 0;
+  if (vowels === 0) return false;
+
+  return true;
 }
 
 function getWordKey(word: string, length: WordLength) {
@@ -493,10 +526,19 @@ export function WordleGame({
       }
     } catch (error) {
       console.error(error instanceof Error ? error.message : 'Не получилось проверить слово через ИИ.');
-      if (!isAllowedWord(normalizedGuess, wordLength, learnedWords)) {
+      const validOfflineWord =
+        isAllowedWord(normalizedGuess, wordLength, learnedWords) ||
+        isPlausibleOfflineRussianWord(normalizedGuess, wordLength);
+
+      if (!validOfflineWord) {
         setMessage('ИИ недоступен, а такого слова нет в локальном словаре игры.');
         focusBoard();
         return;
+      }
+
+      if (!WORDLE_ALLOWED_WORDS[wordLength].has(normalizedGuess)) {
+        const wordKey = getWordKey(normalizedGuess, wordLength);
+        setLearnedWords((currentLearnedWords) => new Set(currentLearnedWords).add(wordKey));
       }
     } finally {
       setCheckingWord(false);
@@ -723,9 +765,15 @@ export function WordleGame({
         )}
 
         {status !== 'playing' && (
-          <button className="next-button" onClick={() => resetGame()} type="button">
-            Новое слово
-          </button>
+          <>
+            <div className={status === 'won' ? 'answer-reveal solved' : 'answer-reveal gave-up'}>
+              <span>{status === 'won' ? 'Правильное слово' : 'Слово было'}</span>
+              <strong>{targetWord}</strong>
+            </div>
+            <button className="next-button" onClick={() => resetGame()} type="button">
+              Новое слово
+            </button>
+          </>
         )}
       </div>
 

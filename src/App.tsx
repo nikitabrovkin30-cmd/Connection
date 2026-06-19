@@ -434,6 +434,10 @@ export default function App() {
     setLastGiftCoins(amount);
   }
 
+  function closeGiftResult() {
+    setLastGiftCoins(null);
+  }
+
   if (supabaseConfigError) {
     return (
       <main className="container">
@@ -527,10 +531,6 @@ export default function App() {
             </div>
           )}
 
-          {lastGiftCoins !== null && (
-            <p className="gift-result">Из сундука выпало {lastGiftCoins} монет!</p>
-          )}
-
           {mode === 'connection' && (
             <ConnectionGame
               categoryId={associationCategory}
@@ -588,6 +588,25 @@ export default function App() {
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {lastGiftCoins !== null && (
+        <div className="gift-overlay" role="dialog" aria-modal="true" aria-label="Награда из сундука">
+          <div className="gift-card gift-result-card">
+            <button
+              aria-label="Закрыть"
+              className="gift-close-button"
+              onClick={closeGiftResult}
+              type="button"
+            >
+              ×
+            </button>
+            <span className="gift-kicker">Сундук открыт</span>
+            <h2>Тебе выпало</h2>
+            <strong>{lastGiftCoins}</strong>
+            <p>монет</p>
           </div>
         </div>
       )}
