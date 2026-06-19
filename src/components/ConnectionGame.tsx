@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { getHardClues, SECRET_WORDS } from '../data/wordBank';
+import { getHardClues, getWordCategory, SECRET_WORDS } from '../data/wordBank';
 import { supabase } from '../lib/supabase';
 import { AdModal } from './AdModal';
 
@@ -474,6 +474,7 @@ export function ConnectionGame({
 
   const roundFinished = status !== 'playing';
   const availableCluesCount = MAX_AI_CLUES;
+  const targetCategory = getWordCategory(targetWord);
 
   async function loadHistory() {
     if (isGuest) {
@@ -706,6 +707,10 @@ export function ConnectionGame({
         <div className="target-box">
           <span>Секретное слово</span>
           <strong>{roundFinished ? targetWord : '??????'}</strong>
+          <p className="word-category">
+            Категория: <b>{targetCategory.title}</b>
+            <small>{targetCategory.description}</small>
+          </p>
         </div>
 
         <form onSubmit={submitWord} className="guess-form">

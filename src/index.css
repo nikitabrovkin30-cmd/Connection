@@ -486,6 +486,26 @@ button.ghost:hover {
   font-size: 34px;
 }
 
+.word-category {
+  display: grid;
+  gap: 4px;
+  margin: 2px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid rgba(47, 125, 104, 0.18);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.word-category b {
+  color: var(--green);
+}
+
+.word-category small {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .result-box {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
