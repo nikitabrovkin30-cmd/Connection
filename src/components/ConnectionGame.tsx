@@ -7,7 +7,7 @@ import { AdModal } from './AdModal';
 
 const GUEST_HISTORY_PREFIX = 'connection_guest_history';
 const CONNECTION_STATE_PREFIX = 'connection_game_state';
-const AI_DISTANCE_CACHE_PREFIX = 'connection_ai_distance_v2';
+const AI_DISTANCE_CACHE_PREFIX = 'connection_ai_distance_v3';
 const AI_CLUE_CACHE_PREFIX = 'connection_ai_clue';
 const AI_MEANING_CACHE_PREFIX = 'connection_ai_meaning';
 const MAX_AI_CLUES = 4;
@@ -283,6 +283,7 @@ function hasSharedTopic(word: string, targetWord: string) {
 
 function tuneSemanticDistance(distance: number, word: string, targetWord: string) {
   if (word === targetWord) return 2;
+  if (getWordCategory(word).title === getWordCategory(targetWord).title && distance > 67) return 67;
   if (!hasSharedTopic(word, targetWord) && distance < 68) return 72;
   return distance;
 }
@@ -303,7 +304,7 @@ function getLocalSemanticDistance(word: string, targetWord: string) {
   }
 
   if (wordTopics.length > 0 && targetTopics.length > 0) {
-    return Math.min(99, 72 + noise);
+    return Math.min(67, 55 + noise);
   }
 
   return Math.min(99, 82 + noise);
@@ -343,7 +344,7 @@ async function getSemanticDistance(word: string, targetWord: string) {
   const { data, error } = await supabase.functions.invoke<AiTextResponse>('ai', {
     body: {
       system:
-        'Ты оцениваешь русские слова для игры Association. Верни только JSON вида {"distance": число}. Поле distance всегда должно быть целым числом от 2 до 99. Оценивай только смысл, тему и обычные ассоциации, не похожесть букв. 2-10 почти синоним или часть одного предмета, 11-25 очень близкая ассоциация, 26-45 та же тема, 46-67 слабая связь, 68-99 другая тема. Не делай абстрактные слова слишком близкими к конкретным предметам. Пример: секрет "резина", игрок "шина" = 12, "колесо" = 22, "машина" = 35, "развлечение" = 82, "музыка" = 88. Пример: секрет "олень", игрок "лось" = 15, "лес" = 29, "рога" = 18, "машина" = 78.',
+        'Ты оцениваешь русские слова для игры Association. Верни только JSON вида {"distance": число}. Поле distance всегда должно быть целым числом от 2 до 99. Оценивай только смысл, тему и обычные ассоциации, не похожесть букв. 2-10 почти синоним или часть одного предмета, 11-25 очень близкая ассоциация, 26-45 та же тема, 46-67 слабая связь. 68-99 ставь только если слова из разных больших категорий. Если слова из одной большой категории, даже при слабой связи число не должно быть больше 67. Не делай абстрактные слова слишком близкими к конкретным предметам. Пример: секрет "резина", игрок "шина" = 12, "колесо" = 22, "машина" = 35, "развлечение" = 82, "музыка" = 88. Пример: секрет "олень", игрок "лось" = 15, "лес" = 29, "рога" = 18, "машина" = 78.',
       prompt: `Секретное слово: "${targetWord}". Слово игрока: "${word}". Верни только JSON, например {"distance": 80}.`,
       json: true,
     },
