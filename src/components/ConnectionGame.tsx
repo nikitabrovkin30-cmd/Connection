@@ -1,11 +1,27 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { SECRET_WORDS } from '../data/wordBank';
+import { getHardClues, SECRET_WORDS } from '../data/wordBank';
 import { supabase } from '../lib/supabase';
 import { AdModal } from './AdModal';
 
 const GUEST_HISTORY_PREFIX = 'connection_guest_history';
 const MAX_AI_CLUES = 3;
+
+const WORD_ALIASES: Record<string, string> = {
+  цветы: 'цветок',
+  цветка: 'цветок',
+  цветов: 'цветок',
+  машины: 'машина',
+  машин: 'машина',
+  книги: 'книга',
+  книгу: 'книга',
+  звезды: 'звезда',
+  звезд: 'звезда',
+  деревья: 'дерево',
+  деревьев: 'дерево',
+  люди: 'человек',
+  людей: 'человек',
+};
 
 type GameStatus = 'playing' | 'won' | 'gave-up';
 
@@ -83,11 +99,14 @@ function normalizeWord(value: string) {
   return value.trim().toLowerCase();
 }
 
+function normalizeAssociationWord(value: string) {
+  const word = normalizeWord(value).replace(/ё/g, 'е');
+  return WORD_ALIASES[word] ?? word;
+}
+
 function getLocalWordMeaning(word: string) {
   return WORD_MEANINGS[word] ?? `Пока не получилось найти точное определение для слова "${word}". Это слово можно использовать как ассоциацию, а по числу рядом понять, насколько оно близко к загаданному.`;
 }
-
-void getLocalWordMeaning;
 
 function cleanMeaning(value: string) {
   return value
@@ -146,16 +165,22 @@ function getDistance(word: string, targetWord: string) {
 }
 
 const TOPIC_WORDS: Record<string, readonly string[]> = {
-  material: ['резина', 'шина', 'колесо', 'машина', 'ремонт', 'завод', 'железо', 'стекло', 'ткань', 'сверло', 'шланг', 'мотор', 'техника', 'сапог', 'ремень'],
+  material: ['резина', 'шина', 'колесо', 'машина', 'ремонт', 'завод', 'железо', 'стекло', 'ткань', 'сверло', 'шланг', 'мотор', 'техника', 'сапог', 'ремень', 'металл', 'бетон', 'кирпич', 'глина', 'камень', 'доска'],
   entertainment: ['развлечение', 'игра', 'кино', 'театр', 'музыка', 'танец', 'спорт', 'праздник', 'шутка', 'хобби', 'фокус', 'артист', 'афиша'],
-  food: ['еда', 'хлеб', 'молоко', 'яблоко', 'банан', 'сахар', 'чай', 'суп', 'сыр', 'мясо', 'овощ', 'фрукт'],
-  nature: ['лес', 'вода', 'море', 'река', 'солнце', 'луна', 'звезда', 'камень', 'трава', 'дерево', 'ветер', 'снег'],
-  place: ['дом', 'школа', 'город', 'парк', 'улица', 'магазин', 'класс', 'комната', 'театр', 'гараж', 'завод'],
+  food: ['еда', 'хлеб', 'молоко', 'яблоко', 'банан', 'сахар', 'чай', 'суп', 'сыр', 'мясо', 'овощ', 'фрукт', 'пирог', 'каша', 'салат', 'соль', 'орех', 'мед', 'перец'],
+  nature: ['лес', 'вода', 'море', 'река', 'солнце', 'луна', 'звезда', 'камень', 'трава', 'дерево', 'ветер', 'снег', 'цветок', 'цветы', 'ягода', 'птица', 'рыба', 'гора', 'облако', 'дождь', 'болото', 'берег', 'песок'],
+  place: ['дом', 'школа', 'город', 'парк', 'улица', 'магазин', 'класс', 'комната', 'театр', 'гараж', 'завод', 'музей', 'кафе', 'двор', 'аэропорт', 'вокзал', 'библиотека'],
+  transport: ['машина', 'поезд', 'самолет', 'автобус', 'велосипед', 'вагон', 'ракета', 'корабль', 'лодка', 'трамвай', 'метро', 'колесо', 'шина', 'мотор'],
+  person: ['человек', 'друг', 'семья', 'мама', 'папа', 'учитель', 'врач', 'актер', 'автор', 'герой', 'ребенок', 'дедушка', 'бабушка'],
+  feeling: ['любовь', 'радость', 'страх', 'грусть', 'скука', 'счастье', 'надежда', 'вера', 'смелость', 'тревога', 'удивление'],
+  object: ['книга', 'телефон', 'стол', 'стул', 'шкаф', 'лампа', 'кровать', 'диван', 'ручка', 'тетрадь', 'нож', 'часы', 'сумка', 'мяч'],
 };
 
 function getWordTopics(word: string) {
+  const normalizedWord = normalizeAssociationWord(word);
+
   return Object.entries(TOPIC_WORDS)
-    .filter(([, words]) => words.includes(word))
+    .filter(([, words]) => words.includes(normalizedWord))
     .map(([topic]) => topic);
 }
 
@@ -171,6 +196,28 @@ function tuneSemanticDistance(distance: number, word: string, targetWord: string
   if (word === targetWord) return 2;
   if (!hasSharedTopic(word, targetWord) && distance < 68) return 72;
   return distance;
+}
+
+function getLocalSemanticDistance(word: string, targetWord: string) {
+  const normalizedWord = normalizeAssociationWord(word);
+  const normalizedTarget = normalizeAssociationWord(targetWord);
+
+  if (normalizedWord === normalizedTarget) return 2;
+
+  const wordTopics = getWordTopics(normalizedWord);
+  const targetTopics = getWordTopics(normalizedTarget);
+  const sharedTopics = wordTopics.filter((topic) => targetTopics.includes(topic));
+  const noise = getStableNoise(normalizedWord, normalizedTarget);
+
+  if (sharedTopics.length > 0) {
+    return Math.max(12, Math.min(45, 24 + noise + Math.abs(normalizedWord.length - normalizedTarget.length) * 2));
+  }
+
+  if (wordTopics.length > 0 && targetTopics.length > 0) {
+    return Math.min(99, 72 + noise);
+  }
+
+  return Math.max(48, tuneSemanticDistance(getDistance(normalizedWord, normalizedTarget), normalizedWord, normalizedTarget));
 }
 
 function parseDistance(value: string) {
@@ -219,7 +266,12 @@ async function getSemanticDistance(word: string, targetWord: string) {
 }
 
 async function getSmartDistance(word: string, targetWord: string) {
-  return getSemanticDistance(word, targetWord);
+  try {
+    return await getSemanticDistance(word, targetWord);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : 'ИИ не смог сравнить слова.');
+    return getLocalSemanticDistance(word, targetWord);
+  }
 }
 
 async function getAiClue(word: string, clueIndex: number) {
@@ -251,7 +303,12 @@ async function getAiClue(word: string, clueIndex: number) {
 }
 
 async function getSmartClue(word: string, clueIndex: number) {
-  return getAiClue(word, clueIndex);
+  try {
+    return await getAiClue(word, clueIndex);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : 'ИИ не смог сделать подсказку.');
+    return getHardClues(word)[clueIndex] ?? 'Попробуй слово из той же темы.';
+  }
 }
 
 function createGuestGuess(word: string, distance: number): Guess {
@@ -500,8 +557,8 @@ export function ConnectionGame({
       setMeaningSource('толковый словарь Ожегова');
     } catch (error) {
       console.error(error instanceof Error ? error.message : 'ИИ не смог найти значение слова.');
-      setWordMeaning('ИИ сейчас недоступен. Не получилось получить толковое значение слова.');
-      setMeaningSource('');
+      setWordMeaning(getLocalWordMeaning(word));
+      setMeaningSource('локальный словарь');
     } finally {
       setMeaningLoading(false);
     }
