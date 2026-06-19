@@ -208,16 +208,29 @@ const CLUE_GROUPS: readonly ClueGroup[] = [
 export function getHardClues(word: string) {
   const groups = CLUE_GROUPS.filter((group) => group.words.includes(word));
   const group = groups[0];
-  const mainClue = group?.clue ?? 'ИИ сейчас недоступен. Подсказку получить не удалось.';
+  const letters = Array.from(word);
+  const visiblePositions = new Set<number>();
+
+  if (letters.length > 2) visiblePositions.add(Math.floor(letters.length / 2));
+  if (letters.length > 4) visiblePositions.add(letters.length - 2);
+  if (letters.length <= 2) visiblePositions.add(letters.length - 1);
+
+  const openedLetters = letters
+    .map((letter, index) => (visiblePositions.has(index) ? letter : '_'))
+    .join(' ');
+
+  const mainClue = group?.clue ?? 'Категория: обычное русское слово.';
   const secondClue = group
-    ? `Пробуй похожие слова: ${group.examples.join(', ')}.`
-    : 'Проверь Supabase функцию ai и GEMINI_API_KEY.';
-  const thirdClue = group?.place ?? 'Без ИИ режим Association не может давать нормальные подсказки.';
+    ? group.place
+    : 'Подумай о предмете, месте, природе, еде, человеке или событии.';
+  const thirdClue = `В слове ${letters.length} ${letters.length === 1 ? 'буква' : letters.length > 1 && letters.length < 5 ? 'буквы' : 'букв'}.`;
+  const fourthClue = `Открытые буквы: ${openedLetters}.`;
 
   return [
     mainClue,
     secondClue,
     thirdClue,
+    fourthClue,
   ];
 }
 

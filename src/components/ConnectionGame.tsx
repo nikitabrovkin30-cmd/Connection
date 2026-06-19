@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { AdModal } from './AdModal';
 
 const GUEST_HISTORY_PREFIX = 'connection_guest_history';
-const MAX_AI_CLUES = 3;
+const MAX_AI_CLUES = 4;
 
 const WORD_ALIASES: Record<string, string> = {
   цветы: 'цветок',
@@ -153,17 +153,6 @@ function getStableNoise(word: string, targetWord: string) {
   return total % 11;
 }
 
-function getDistance(word: string, targetWord: string) {
-  const wordLetters = new Set(Array.from(word));
-  const targetLetters = new Set(Array.from(targetWord));
-  const sharedLetters = Array.from(wordLetters).filter((letter) => targetLetters.has(letter)).length;
-  const lengthGap = Math.abs(word.length - targetWord.length);
-  const overlapBonus = sharedLetters * 8;
-  const rawDistance = 70 + lengthGap * 4 + getStableNoise(word, targetWord) - overlapBonus;
-
-  return Math.max(2, Math.min(99, rawDistance));
-}
-
 const TOPIC_WORDS: Record<string, readonly string[]> = {
   material: ['резина', 'шина', 'колесо', 'машина', 'ремонт', 'завод', 'железо', 'стекло', 'ткань', 'сверло', 'шланг', 'мотор', 'техника', 'сапог', 'ремень', 'металл', 'бетон', 'кирпич', 'глина', 'камень', 'доска'],
   entertainment: ['развлечение', 'игра', 'кино', 'театр', 'музыка', 'танец', 'спорт', 'праздник', 'шутка', 'хобби', 'фокус', 'артист', 'афиша'],
@@ -210,14 +199,14 @@ function getLocalSemanticDistance(word: string, targetWord: string) {
   const noise = getStableNoise(normalizedWord, normalizedTarget);
 
   if (sharedTopics.length > 0) {
-    return Math.max(12, Math.min(45, 24 + noise + Math.abs(normalizedWord.length - normalizedTarget.length) * 2));
+    return Math.max(12, Math.min(45, 22 + sharedTopics.length * 3 + noise));
   }
 
   if (wordTopics.length > 0 && targetTopics.length > 0) {
     return Math.min(99, 72 + noise);
   }
 
-  return Math.max(48, tuneSemanticDistance(getDistance(normalizedWord, normalizedTarget), normalizedWord, normalizedTarget));
+  return Math.min(99, 82 + noise);
 }
 
 function parseDistance(value: string) {
@@ -303,6 +292,10 @@ async function getAiClue(word: string, clueIndex: number) {
 }
 
 async function getSmartClue(word: string, clueIndex: number) {
+  if (clueIndex >= 2) {
+    return getHardClues(word)[clueIndex] ?? 'Открой еще одну подсказку позже.';
+  }
+
   try {
     return await getAiClue(word, clueIndex);
   } catch (error) {
@@ -323,7 +316,7 @@ function createGuestGuess(word: string, distance: number): Guess {
 function withDistance(item: StoredGuess, targetWord: string): Guess {
   return {
     ...item,
-    distance: item.distance ?? tuneSemanticDistance(getDistance(item.guess_word, targetWord), item.guess_word, targetWord),
+    distance: item.distance ?? getLocalSemanticDistance(item.guess_word, targetWord),
   };
 }
 
