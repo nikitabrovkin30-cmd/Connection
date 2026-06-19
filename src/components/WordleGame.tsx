@@ -267,6 +267,7 @@ export function WordleGame({
   userEmail,
 }: WordleGameProps) {
   const boardRef = useRef<HTMLDivElement>(null);
+  const mobileInputRef = useRef<HTMLInputElement>(null);
   const savedState = loadWordleState(userEmail);
   const [wordLength, setWordLength] = useState<WordLength>(() => savedState?.wordLength ?? 5);
   const [targetWord, setTargetWord] = useState(() => savedState?.targetWord ?? pickWord(5));
@@ -297,6 +298,7 @@ export function WordleGame({
 
   function focusBoard() {
     boardRef.current?.focus();
+    mobileInputRef.current?.focus();
   }
 
   useEffect(() => {
@@ -445,6 +447,14 @@ export function WordleGame({
     }
   }
 
+  function handleMobileInputChange(value: string) {
+    if (status !== 'playing' || checkingWord) return;
+
+    const letters = normalizeWord(value).replace(/[^а-я]/g, '').slice(0, wordLength);
+    setGuess(letters);
+    setMessage('');
+  }
+
   function addLetter(letter: string) {
     if (status !== 'playing' || checkingWord) return;
 
@@ -501,6 +511,21 @@ export function WordleGame({
             role="textbox"
             tabIndex={0}
           >
+            <input
+              aria-label="Ввод слова Wordle"
+              autoCapitalize="none"
+              autoComplete="off"
+              autoCorrect="off"
+              className="wordle-mobile-input"
+              disabled={status !== 'playing' || checkingWord}
+              inputMode="text"
+              maxLength={wordLength}
+              onChange={(e) => handleMobileInputChange(e.target.value)}
+              ref={mobileInputRef}
+              spellCheck={false}
+              type="text"
+              value={guess}
+            />
             <span className="wordle-board">
               {rows.map((row) => (
                 <span className="wordle-row" key={row.id}>
