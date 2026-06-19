@@ -3,6 +3,8 @@ import { Auth } from './components/Auth';
 import { ConnectionGame } from './components/ConnectionGame';
 import { WordleGame } from './components/WordleGame';
 import chestImage from './assets/chest.svg';
+import { ASSOCIATION_CATEGORIES } from './data/wordBank';
+import type { AssociationCategoryId } from './data/wordBank';
 import { supabase, supabaseConfigError } from './lib/supabase';
 
 const HINT_COST = 100;
@@ -13,6 +15,7 @@ const LOCAL_GUEST_NAME = 'Гость';
 const LOCAL_GUEST_COINS_KEY = 'association_guest_coins';
 const LOCAL_GUEST_SOLVED_KEY = 'association_guest_solved_words';
 const LOCAL_GAME_MODE_KEY = 'association_game_mode';
+const LOCAL_ASSOCIATION_CATEGORY_KEY = 'association_category';
 const PRODUCTION_APP_URL = 'https://connection-cyan.vercel.app';
 
 type GameMode = 'connection' | 'wordle';
@@ -30,6 +33,13 @@ function isMissingSessionError(message: string) {
 function loadSavedMode(): GameMode {
   const savedMode = localStorage.getItem(LOCAL_GAME_MODE_KEY);
   return savedMode === 'wordle' ? 'wordle' : 'connection';
+}
+
+function loadSavedAssociationCategory(): AssociationCategoryId {
+  const savedCategory = localStorage.getItem(LOCAL_ASSOCIATION_CATEGORY_KEY);
+  return ASSOCIATION_CATEGORIES.some((category) => category.id === savedCategory)
+    ? (savedCategory as AssociationCategoryId)
+    : 'all';
 }
 
 function getRedirectUrl() {
@@ -62,6 +72,9 @@ export default function App() {
   const [giftOptions, setGiftOptions] = useState<number[] | null>(null);
   const [lastGiftCoins, setLastGiftCoins] = useState<number | null>(null);
   const [mode, setMode] = useState<GameMode>(() => loadSavedMode());
+  const [associationCategory, setAssociationCategory] = useState<AssociationCategoryId>(
+    () => loadSavedAssociationCategory(),
+  );
   const [authScreenKey, setAuthScreenKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState('');
@@ -116,6 +129,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(LOCAL_GAME_MODE_KEY, mode);
   }, [mode]);
+
+  useEffect(() => {
+    localStorage.setItem(LOCAL_ASSOCIATION_CATEGORY_KEY, associationCategory);
+  }, [associationCategory]);
 
   function getNicknameFromEmail(email: string) {
     return email.split('@')[0] || 'Игрок';
@@ -485,15 +502,33 @@ export default function App() {
             </button>
           </div>
 
+          {mode === 'connection' && (
+            <div className="category-tabs" aria-label="Категория слов">
+              {ASSOCIATION_CATEGORIES.map((category) => (
+                <button
+                  className={associationCategory === category.id ? 'category-tab active' : 'category-tab'}
+                  key={category.id}
+                  onClick={() => setAssociationCategory(category.id)}
+                  title={category.description}
+                  type="button"
+                >
+                  {category.title}
+                </button>
+              ))}
+            </div>
+          )}
+
           {lastGiftCoins !== null && (
             <p className="gift-result">Из сундука выпало {lastGiftCoins} монет!</p>
           )}
 
           {mode === 'connection' ? (
             <ConnectionGame
+              categoryId={associationCategory}
               coins={coins}
               hintCost={HINT_COST}
               isGuest={isGuest}
+              key={`association-${associationCategory}`}
               onReward={rewardSolvedWord}
               onSpendCoins={() => spendCoins(HINT_COST)}
               rewardCoins={WIN_REWARD}

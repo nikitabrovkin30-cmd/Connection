@@ -96,6 +96,29 @@ body {
   color: var(--accent-dark);
 }
 
+.category-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -4px 0 18px;
+}
+
+.category-tab {
+  min-height: 40px;
+  flex: 1 1 150px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.category-tab:hover,
+.category-tab.active {
+  border-color: rgba(47, 125, 104, 0.35);
+  background: #e9f6ef;
+  color: var(--green);
+}
+
 .gift-result {
   margin: -6px 0 18px;
   padding: 12px 14px;

@@ -165,6 +165,12 @@ type WordCategory = {
   description: string;
 };
 
+export type AssociationCategoryId = 'all' | 'природа' | 'еда' | 'место' | 'предмет' | 'материал' | 'человек';
+
+type AssociationCategory = WordCategory & {
+  id: AssociationCategoryId;
+};
+
 const CLUE_GROUPS: readonly ClueGroup[] = [
   {
     clue: 'Категория: природа.',
@@ -236,6 +242,38 @@ const CATEGORY_NAMES: Record<string, WordCategory> = {
     description: 'люди, чувства, события, занятия и идеи',
   },
 };
+
+export const ASSOCIATION_CATEGORIES: readonly AssociationCategory[] = [
+  {
+    id: 'all',
+    title: 'Все категории',
+    description: 'слова из всех групп',
+  },
+  {
+    id: 'природа',
+    ...CATEGORY_NAMES.природа,
+  },
+  {
+    id: 'еда',
+    ...CATEGORY_NAMES.еда,
+  },
+  {
+    id: 'место',
+    ...CATEGORY_NAMES.место,
+  },
+  {
+    id: 'предмет',
+    ...CATEGORY_NAMES.предмет,
+  },
+  {
+    id: 'материал',
+    ...CATEGORY_NAMES.материал,
+  },
+  {
+    id: 'человек',
+    ...CATEGORY_NAMES.человек,
+  },
+];
 
 const EXTRA_CATEGORY_WORDS: Record<string, readonly string[]> = {
   природа: [
@@ -333,6 +371,19 @@ export function getWordCategory(word: string): WordCategory {
   const label = exactGroup?.label ?? extraGroup?.[0] ?? 'человек';
 
   return CATEGORY_NAMES[label] ?? CATEGORY_NAMES.человек;
+}
+
+export function getWordsForCategory(categoryId: AssociationCategoryId) {
+  if (categoryId === 'all') return SECRET_WORDS;
+
+  const exactWords = CLUE_GROUPS
+    .filter((group) => group.label === categoryId)
+    .flatMap((group) => group.words);
+  const extraWords = EXTRA_CATEGORY_WORDS[categoryId] ?? [];
+  const categoryWords = new Set([...exactWords, ...extraWords]);
+  const filteredWords = SECRET_WORDS.filter((word) => categoryWords.has(word));
+
+  return filteredWords.length > 0 ? filteredWords : SECRET_WORDS;
 }
 
 function getStableIndex(word: string, length: number) {

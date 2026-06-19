@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { getHardClues, getWordCategory, SECRET_WORDS } from '../data/wordBank';
+import { getHardClues, getWordCategory, getWordsForCategory, SECRET_WORDS } from '../data/wordBank';
+import type { AssociationCategoryId } from '../data/wordBank';
 import { supabase } from '../lib/supabase';
 import { AdModal } from './AdModal';
 
@@ -59,6 +60,7 @@ type AiTextResponse = {
 };
 
 type ConnectionGameProps = {
+  categoryId: AssociationCategoryId;
   coins: number;
   hintCost: number;
   onReward: () => void;
@@ -186,9 +188,10 @@ async function fetchOzhegovMeaning(word: string) {
   return meaning;
 }
 
-function pickRandomWord(currentWord?: string) {
-  const options = SECRET_WORDS.filter((word) => word !== currentWord);
-  const words = options.length > 0 ? options : SECRET_WORDS;
+function pickRandomWord(categoryId: AssociationCategoryId, currentWord?: string) {
+  const categoryWords = getWordsForCategory(categoryId);
+  const options = categoryWords.filter((word) => word !== currentWord);
+  const words = options.length > 0 ? options : categoryWords;
   return words[Math.floor(Math.random() * words.length)];
 }
 
@@ -196,16 +199,16 @@ function getGuestHistoryKey(targetWord: string) {
   return `${GUEST_HISTORY_PREFIX}_${targetWord}`;
 }
 
-function getConnectionStateKey(userEmail: string) {
-  return `${CONNECTION_STATE_PREFIX}_${userEmail}`;
+function getConnectionStateKey(userEmail: string, categoryId: AssociationCategoryId) {
+  return `${CONNECTION_STATE_PREFIX}_${userEmail}_${categoryId}`;
 }
 
 function isGameStatus(value: unknown): value is GameStatus {
   return value === 'playing' || value === 'won' || value === 'gave-up';
 }
 
-function loadConnectionState(userEmail: string): SavedConnectionState | null {
-  const saved = localStorage.getItem(getConnectionStateKey(userEmail));
+function loadConnectionState(userEmail: string, categoryId: AssociationCategoryId): SavedConnectionState | null {
+  const saved = localStorage.getItem(getConnectionStateKey(userEmail, categoryId));
   if (!saved) return null;
 
   try {
@@ -214,6 +217,7 @@ function loadConnectionState(userEmail: string): SavedConnectionState | null {
     if (
       typeof parsed.targetWord !== 'string' ||
       !(SECRET_WORDS as readonly string[]).includes(parsed.targetWord) ||
+      !(getWordsForCategory(categoryId) as readonly string[]).includes(parsed.targetWord) ||
       !isGameStatus(parsed.status)
     ) {
       return null;
@@ -448,6 +452,7 @@ function loadGuestHistory(targetWord: string) {
 }
 
 export function ConnectionGame({
+  categoryId,
   coins,
   hintCost,
   onReward,
@@ -456,8 +461,8 @@ export function ConnectionGame({
   userEmail,
   isGuest,
 }: ConnectionGameProps) {
-  const savedState = loadConnectionState(userEmail);
-  const [targetWord, setTargetWord] = useState(() => savedState?.targetWord ?? pickRandomWord());
+  const savedState = loadConnectionState(userEmail, categoryId);
+  const [targetWord, setTargetWord] = useState(() => savedState?.targetWord ?? pickRandomWord(categoryId));
   const [inputWord, setInputWord] = useState(() => savedState?.inputWord ?? '');
   const [history, setHistory] = useState<Guess[]>([]);
   const [lastResult, setLastResult] = useState<LastResult | null>(() => savedState?.lastResult ?? null);
@@ -502,7 +507,7 @@ export function ConnectionGame({
 
   useEffect(() => {
     localStorage.setItem(
-      getConnectionStateKey(userEmail),
+      getConnectionStateKey(userEmail, categoryId),
       JSON.stringify({
         targetWord,
         inputWord,
@@ -512,7 +517,7 @@ export function ConnectionGame({
         shownClues,
       } satisfies SavedConnectionState),
     );
-  }, [inputWord, lastResult, message, shownClues, status, targetWord, userEmail]);
+  }, [categoryId, inputWord, lastResult, message, shownClues, status, targetWord, userEmail]);
 
   async function saveGuestAssociation(word: string, distance: number) {
     const oldHistory = loadGuestHistory(targetWord);
@@ -547,7 +552,7 @@ export function ConnectionGame({
   }
 
   function startNextRound() {
-    setTargetWord((currentWord) => pickRandomWord(currentWord));
+    setTargetWord((currentWord) => pickRandomWord(categoryId, currentWord));
     setInputWord('');
     setLastResult(null);
     setMessage('');
