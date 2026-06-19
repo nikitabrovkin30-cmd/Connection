@@ -703,7 +703,7 @@ export function ConnectionGame({
         </p>
 
         <p className="guest-note">
-          В словаре 1000 слов. Подсказка открывается после короткой рекламы.
+          В словаре {SECRET_WORDS.length} слов. Подсказка открывается после короткой рекламы.
         </p>
 
         <p className="currency-note">
@@ -713,10 +713,12 @@ export function ConnectionGame({
         <div className="target-box">
           <span>Секретное слово</span>
           <strong>{roundFinished ? targetWord : '??????'}</strong>
-          <p className="word-category">
-            Категория: <b>{targetCategory.title}</b>
-            <small>{targetCategory.description}</small>
-          </p>
+          {categoryId !== 'all' && (
+            <p className="word-category">
+              Категория: <b>{targetCategory.title}</b>
+              <small>{targetCategory.description}</small>
+            </p>
+          )}
         </div>
 
         <form onSubmit={submitWord} className="guess-form">

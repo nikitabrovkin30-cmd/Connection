@@ -289,8 +289,9 @@ function isAllowedWord(word: string, length: WordLength, learnedWords: Set<strin
 }
 
 function pickWord(length: WordLength, currentWord?: string) {
-  const options = WORDS[length].filter((word) => word !== currentWord);
-  const words = options.length > 0 ? options : WORDS[length];
+  const knownWords = Array.from(WORDLE_ALLOWED_WORDS[length]);
+  const options = knownWords.filter((word) => word !== currentWord);
+  const words = options.length > 0 ? options : knownWords;
   return words[Math.floor(Math.random() * words.length)];
 }
 

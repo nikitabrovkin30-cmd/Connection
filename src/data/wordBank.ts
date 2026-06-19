@@ -150,7 +150,7 @@ const ALL_SECRET_WORDS = [
   'ювелир','ягненок','якорь','ярость','ясность','ячейка','аванс','авеню','авокадо','агроном',
 ] as const;
 
-export const SECRET_WORDS = ALL_SECRET_WORDS.slice(0, 1000);
+export const SECRET_WORDS = ALL_SECRET_WORDS;
 
 type ClueGroup = {
   clue: string;
