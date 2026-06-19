@@ -6,6 +6,9 @@ import { AdModal } from './AdModal';
 
 const GUEST_HISTORY_PREFIX = 'connection_guest_history';
 const CONNECTION_STATE_PREFIX = 'connection_game_state';
+const AI_DISTANCE_CACHE_PREFIX = 'connection_ai_distance';
+const AI_CLUE_CACHE_PREFIX = 'connection_ai_clue';
+const AI_MEANING_CACHE_PREFIX = 'connection_ai_meaning';
 const MAX_AI_CLUES = 4;
 
 const WORD_ALIASES: Record<string, string> = {
@@ -114,6 +117,34 @@ function normalizeAssociationWord(value: string) {
   return WORD_ALIASES[word] ?? word;
 }
 
+function readCacheValue(key: string) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeCacheValue(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // If storage is full or blocked, the game can still use AI/local fallback.
+  }
+}
+
+function getDistanceCacheKey(word: string, targetWord: string) {
+  return `${AI_DISTANCE_CACHE_PREFIX}_${normalizeAssociationWord(targetWord)}_${normalizeAssociationWord(word)}`;
+}
+
+function getClueCacheKey(word: string, clueIndex: number) {
+  return `${AI_CLUE_CACHE_PREFIX}_${normalizeAssociationWord(word)}_${clueIndex}`;
+}
+
+function getMeaningCacheKey(word: string) {
+  return `${AI_MEANING_CACHE_PREFIX}_${normalizeAssociationWord(word)}`;
+}
+
 function getLocalWordMeaning(word: string) {
   return WORD_MEANINGS[word] ?? `Пока не получилось найти точное определение для слова "${word}". Это слово можно использовать как ассоциацию, а по числу рядом понять, насколько оно близко к загаданному.`;
 }
@@ -126,6 +157,13 @@ function cleanMeaning(value: string) {
 }
 
 async function fetchOzhegovMeaning(word: string) {
+  const cacheKey = getMeaningCacheKey(word);
+  const cachedMeaning = readCacheValue(cacheKey);
+
+  if (cachedMeaning) {
+    return cachedMeaning;
+  }
+
   const { data, error } = await supabase.functions.invoke<AiTextResponse>('ai', {
     body: {
       system:
@@ -144,6 +182,7 @@ async function fetchOzhegovMeaning(word: string) {
     throw new Error('meaning not found');
   }
 
+  writeCacheValue(cacheKey, meaning);
   return meaning;
 }
 
@@ -289,6 +328,13 @@ function parseDistance(value: string) {
 }
 
 async function getSemanticDistance(word: string, targetWord: string) {
+  const cacheKey = getDistanceCacheKey(word, targetWord);
+  const cachedDistance = Number(readCacheValue(cacheKey));
+
+  if (Number.isFinite(cachedDistance) && cachedDistance >= 2 && cachedDistance <= 99) {
+    return cachedDistance;
+  }
+
   const { data, error } = await supabase.functions.invoke<AiTextResponse>('ai', {
     body: {
       system:
@@ -307,7 +353,9 @@ async function getSemanticDistance(word: string, targetWord: string) {
     throw new Error('AI did not return distance');
   }
 
-  return tuneSemanticDistance(distance, word, targetWord);
+  const tunedDistance = tuneSemanticDistance(distance, word, targetWord);
+  writeCacheValue(cacheKey, String(tunedDistance));
+  return tunedDistance;
 }
 
 async function getSmartDistance(word: string, targetWord: string) {
@@ -320,6 +368,13 @@ async function getSmartDistance(word: string, targetWord: string) {
 }
 
 async function getAiClue(word: string, clueIndex: number) {
+  const cacheKey = getClueCacheKey(word, clueIndex);
+  const cachedClue = readCacheValue(cacheKey);
+
+  if (cachedClue) {
+    return cachedClue;
+  }
+
   const clueStyle = [
     'Дай одно близкое по смыслу слово-подсказку, которое было бы примерно на расстоянии 25-30 от секрета в игре. Оно должно быть из той же темы, но не слишком очевидное. Формат ответа: "Близкое слово: слово".',
     'Дай простую ситуацию, где это можно встретить или использовать. Не называй само слово.',
@@ -344,6 +399,7 @@ async function getAiClue(word: string, clueIndex: number) {
     throw new Error('AI clue is unsafe');
   }
 
+  writeCacheValue(cacheKey, clue);
   return clue;
 }
 

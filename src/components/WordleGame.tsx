@@ -40,6 +40,7 @@ type WordleGameProps = {
 
 const MAX_ATTEMPTS = 6;
 const WORDLE_STATE_PREFIX = 'wordle_game_state';
+const WORDLE_VALIDATION_CACHE_PREFIX = 'wordle_ai_validation';
 const RUSSIAN_ALPHABET = Array.from('абвгдежзийклмнопрстуфхцчшщъыьэюя');
 
 const WORDS: Record<WordLength, string[]> = {
@@ -88,6 +89,34 @@ const WORDLE_ALLOWED_WORDS: Record<WordLength, Set<string>> = {
 
 function normalizeWord(value: string) {
   return value.trim().toLowerCase().replace(/ё/g, 'е');
+}
+
+function readCachedValidation(cacheKey: string) {
+  const memoryValue = wordValidationCache.get(cacheKey);
+  if (memoryValue !== undefined) return memoryValue;
+
+  try {
+    const savedValue = localStorage.getItem(`${WORDLE_VALIDATION_CACHE_PREFIX}_${cacheKey}`);
+    if (savedValue === 'true' || savedValue === 'false') {
+      const validation = savedValue === 'true';
+      wordValidationCache.set(cacheKey, validation);
+      return validation;
+    }
+  } catch {
+    // If localStorage is blocked, in-memory cache still works.
+  }
+
+  return undefined;
+}
+
+function writeCachedValidation(cacheKey: string, validation: boolean) {
+  wordValidationCache.set(cacheKey, validation);
+
+  try {
+    localStorage.setItem(`${WORDLE_VALIDATION_CACHE_PREFIX}_${cacheKey}`, String(validation));
+  } catch {
+    // If localStorage is blocked, in-memory cache still works.
+  }
 }
 
 function getWordleStateKey(userEmail: string) {
@@ -174,7 +203,7 @@ function parseWordValidation(value: string) {
 
 async function isRealRussianWord(word: string, length: WordLength) {
   const cacheKey = `${length}:${word}`;
-  const cachedValue = wordValidationCache.get(cacheKey);
+  const cachedValue = readCachedValidation(cacheKey);
   if (cachedValue !== undefined) return cachedValue;
 
   const { data, error } = await supabase.functions.invoke<AiTextResponse>('ai', {
@@ -195,7 +224,7 @@ async function isRealRussianWord(word: string, length: WordLength) {
     throw new Error('AI did not validate word');
   }
 
-  wordValidationCache.set(cacheKey, validation);
+  writeCachedValidation(cacheKey, validation);
   return validation;
 }
 
