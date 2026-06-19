@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
+import { supabase } from '../lib/supabase';
 import { AdModal } from './AdModal';
 
 type WordLength = 4 | 5 | 6;
@@ -11,6 +12,10 @@ type GuessRow = {
   id: string;
   word: string;
   tiles: TileStatus[];
+};
+
+type AiTextResponse = {
+  text?: string;
 };
 
 type WordleGameProps = {
@@ -61,14 +66,55 @@ const WORDS: Record<WordLength, string[]> = {
   ],
 };
 
-const WORDLE_ALLOWED_WORDS: Record<WordLength, Set<string>> = {
-  4: new Set(WORDS[4]),
-  5: new Set(WORDS[5]),
-  6: new Set(WORDS[6]),
-};
+const wordValidationCache = new Map<string, boolean>();
 
 function normalizeWord(value: string) {
   return value.trim().toLowerCase().replace(/ё/g, 'е');
+}
+
+function parseWordValidation(value: string) {
+  const jsonMatch = value.match(/\{[\s\S]*\}/);
+
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]) as { valid?: unknown };
+      if (typeof parsed.valid === 'boolean') return parsed.valid;
+    } catch {
+      // Gemini may answer with plain text; fall through to text parsing.
+    }
+  }
+
+  const normalizedValue = value.trim().toLowerCase();
+  if (normalizedValue.includes('true') || normalizedValue.includes('да')) return true;
+  if (normalizedValue.includes('false') || normalizedValue.includes('нет')) return false;
+
+  return null;
+}
+
+async function isRealRussianWord(word: string, length: WordLength) {
+  const cacheKey = `${length}:${word}`;
+  const cachedValue = wordValidationCache.get(cacheKey);
+  if (cachedValue !== undefined) return cachedValue;
+
+  const { data, error } = await supabase.functions.invoke<AiTextResponse>('ai', {
+    body: {
+      system:
+        'Ты проверяешь слова для русской игры Wordle. Верни только JSON вида {"valid": true} или {"valid": false}. true только если это реально существующее русское слово в начальной форме или обычной словарной форме. Не принимай наборы букв, опечатки, имена людей, бренды, сокращения, английские слова и слова не той длины.',
+      prompt: `Слово: "${word}". Длина должна быть ровно ${length} букв. Это существующее русское слово для Wordle?`,
+    },
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const validation = parseWordValidation(data?.text ?? '');
+  if (validation === null) {
+    throw new Error('AI did not validate word');
+  }
+
+  wordValidationCache.set(cacheKey, validation);
+  return validation;
 }
 
 function pickWord(length: WordLength, currentWord?: string) {
@@ -147,6 +193,7 @@ export function WordleGame({
   const [message, setMessage] = useState('');
   const [hintIndex, setHintIndex] = useState<number | null>(null);
   const [showAd, setShowAd] = useState(false);
+  const [checkingWord, setCheckingWord] = useState(false);
 
   const emptyRows = useMemo(
     () => Array.from({ length: Math.max(0, MAX_ATTEMPTS - rows.length) }),
@@ -211,9 +258,9 @@ export function WordleGame({
     window.setTimeout(focusBoard, 0);
   }
 
-  function submitCurrentGuess() {
+  async function submitCurrentGuess() {
     const normalizedGuess = normalizeWord(guess);
-    if (status !== 'playing') return;
+    if (status !== 'playing' || checkingWord) return;
 
     if (normalizedGuess.length !== wordLength) {
       setMessage(`Нужно слово из ${wordLength} букв.`);
@@ -221,10 +268,24 @@ export function WordleGame({
       return;
     }
 
-    if (!WORDLE_ALLOWED_WORDS[wordLength].has(normalizedGuess)) {
-      setMessage('Такого слова нет в словаре игры.');
+    setCheckingWord(true);
+    setMessage('Проверяем слово...');
+
+    try {
+      const validWord = await isRealRussianWord(normalizedGuess, wordLength);
+
+      if (!validWord) {
+        setMessage('ИИ не нашел такое русское слово. Попробуй другое.');
+        focusBoard();
+        return;
+      }
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : 'Не получилось проверить слово через ИИ.');
+      setMessage('ИИ сейчас недоступен. Без ИИ Wordle не проверяет слова.');
       focusBoard();
       return;
+    } finally {
+      setCheckingWord(false);
     }
 
     const nextRow: GuessRow = {
@@ -256,15 +317,15 @@ export function WordleGame({
 
   function submitGuess(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    submitCurrentGuess();
+    void submitCurrentGuess();
   }
 
   function handleBoardKeyDown(e: KeyboardEvent<HTMLDivElement>) {
-    if (status !== 'playing') return;
+    if (status !== 'playing' || checkingWord) return;
 
     if (e.key === 'Enter') {
       e.preventDefault();
-      submitCurrentGuess();
+      void submitCurrentGuess();
       return;
     }
 
@@ -284,7 +345,7 @@ export function WordleGame({
   }
 
   function addLetter(letter: string) {
-    if (status !== 'playing') return;
+    if (status !== 'playing' || checkingWord) return;
 
     setGuess((current) => {
       if (current.length >= wordLength) return current;
@@ -371,7 +432,7 @@ export function WordleGame({
               return (
                 <button
                   className={`letter-key ${letterStatus}`}
-                  disabled={status !== 'playing'}
+                  disabled={status !== 'playing' || checkingWord}
                   key={letter}
                   onClick={() => addLetter(letter)}
                   type="button"
@@ -383,12 +444,12 @@ export function WordleGame({
           </div>
 
           <div className="wordle-actions">
-            <button disabled={status !== 'playing'} type="submit">
-              Проверить
+            <button disabled={status !== 'playing' || checkingWord} type="submit">
+              {checkingWord ? 'Проверяем...' : 'Проверить'}
             </button>
             <button
               className="soft-button"
-              disabled={status !== 'playing' || hintIndex !== null || coins < hintCost}
+              disabled={status !== 'playing' || hintIndex !== null || coins < hintCost || checkingWord}
               onClick={buyHint}
               type="button"
             >
@@ -396,7 +457,7 @@ export function WordleGame({
             </button>
             <button
               className="ad-button"
-              disabled={status !== 'playing' || hintIndex !== null || showAd}
+              disabled={status !== 'playing' || hintIndex !== null || showAd || checkingWord}
               onClick={openAdForHint}
               type="button"
             >

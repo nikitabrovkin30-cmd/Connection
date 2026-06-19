@@ -2,28 +2,99 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 
 type AuthProps = {
-  onStart: (nickname: string) => void;
+  onGuestStart: () => Promise<void>;
+  onGoogleStart: () => Promise<void>;
+  onStart: (email: string, password: string) => Promise<string>;
 };
 
-function normalizeNickname(value: string) {
-  return value.trim().replace(/\s+/g, ' ');
+function normalizeEmail(value: string) {
+  return value.trim().toLowerCase();
 }
 
-export function Auth({ onStart }: AuthProps) {
-  const [nickname, setNickname] = useState('');
+export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
+  const [showIntro, setShowIntro] = useState(true);
+  const [busy, setBusy] = useState(false);
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    const nextNickname = normalizeNickname(nickname);
+    const nextEmail = normalizeEmail(email);
 
-    if (nextNickname.length < 2) {
-      setMessage('Напиши никнейм хотя бы из 2 символов.');
+    if (!nextEmail.includes('@')) {
+      setMessage('Напиши mail правильно.');
       return;
     }
 
-    onStart(nextNickname);
+    if (password.length < 4) {
+      setMessage('Пароль должен быть хотя бы из 4 символов.');
+      return;
+    }
+
+    setBusy(true);
+    const errorMessage = await onStart(nextEmail, password);
+    setBusy(false);
+
+    if (errorMessage) {
+      setMessage(errorMessage);
+    }
+  }
+
+  async function handleGuestStart() {
+    setBusy(true);
+    setMessage('');
+    await onGuestStart();
+    setBusy(false);
+  }
+
+  async function handleGoogleStart() {
+    setBusy(true);
+    setMessage('');
+    await onGoogleStart();
+    setBusy(false);
+  }
+
+  if (showIntro) {
+    return (
+      <section className="card intro-card">
+        <span className="intro-kicker">Игры в проекте</span>
+        <h2>Association Wordle</h2>
+
+        <div className="intro-grid">
+          <article className="intro-panel wordle-panel">
+            <h3>Wordle</h3>
+            <p>
+              Wordle - это игра, где нужно угадать слово за 6 попыток. После каждой попытки
+              буквы меняют цвет.
+            </p>
+            <ul>
+              <li><strong>Зеленый:</strong> буква стоит на своем месте.</li>
+              <li><strong>Желтый:</strong> буква есть в слове, но в другом месте.</li>
+              <li><strong>Серый:</strong> такой буквы в слове нет.</li>
+            </ul>
+          </article>
+
+          <article className="intro-panel association-panel">
+            <h3>Association</h3>
+            <p>
+              Association - это режим про смысл и ассоциации. Нужно найти загаданное слово,
+              пробуя близкие по теме варианты.
+            </p>
+            <ul>
+              <li>Пиши любое слово или ответ.</li>
+              <li>Меньшее число значит, что ассоциация ближе.</li>
+              <li>Подсказки помогают понять тему слова.</li>
+            </ul>
+          </article>
+        </div>
+
+        <button className="next-button" onClick={() => setShowIntro(false)} type="button">
+          Продолжить
+        </button>
+      </section>
+    );
   }
 
   return (
@@ -35,28 +106,50 @@ export function Auth({ onStart }: AuthProps) {
       </div>
 
       <h2>Вход в игру</h2>
-      <p className="auth-subtitle">Придумай никнейм и выбирай режим: ассоциации или Wordle.</p>
+      <p className="auth-subtitle">Войди по mail и выбирай режим: Association или Wordle.</p>
 
       <div className="lobby-preview" aria-hidden="true">
-        <span>Connection</span>
+        <span>Association</span>
         <span>Wordle</span>
       </div>
 
       <form onSubmit={handleSubmit} className="form">
         <input
-          type="text"
-          placeholder="твой никнейм"
-          value={nickname}
+          type="email"
+          placeholder="mail"
+          value={email}
           onChange={(e) => {
-            setNickname(e.target.value);
+            setEmail(e.target.value);
             setMessage('');
           }}
-          maxLength={24}
           autoFocus
           required
+          disabled={busy}
         />
-        <button type="submit">Играть</button>
+        <input
+          type="password"
+          placeholder="пароль"
+          value={password}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            setMessage('');
+          }}
+          minLength={4}
+          required
+          disabled={busy}
+        />
+        <button type="submit" disabled={busy}>
+          {busy ? 'Входим...' : 'Играть'}
+        </button>
       </form>
+
+      <button className="guest-button" disabled={busy} onClick={handleGuestStart} type="button">
+        {busy ? 'Входим...' : 'Играть гостем'}
+      </button>
+
+      <button className="google-button" disabled={busy} onClick={handleGoogleStart} type="button">
+        Войти через Google
+      </button>
 
       {message && <p className="message">{message}</p>}
     </section>

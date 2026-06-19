@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { getHardClues, SECRET_WORDS } from '../data/wordBank';
+import { SECRET_WORDS } from '../data/wordBank';
 import { supabase } from '../lib/supabase';
 import { AdModal } from './AdModal';
 
 const GUEST_HISTORY_PREFIX = 'connection_guest_history';
+const MAX_AI_CLUES = 3;
 
 type GameStatus = 'playing' | 'won' | 'gave-up';
 
@@ -22,6 +23,10 @@ type StoredGuess = Omit<Guess, 'distance'> & {
 type LastResult = {
   word: string;
   distance: number;
+};
+
+type AiTextResponse = {
+  text?: string;
 };
 
 type ConnectionGameProps = {
@@ -82,6 +87,8 @@ function getLocalWordMeaning(word: string) {
   return WORD_MEANINGS[word] ?? `Пока не получилось найти точное определение для слова "${word}". Это слово можно использовать как ассоциацию, а по числу рядом понять, насколько оно близко к загаданному.`;
 }
 
+void getLocalWordMeaning;
+
 function cleanMeaning(value: string) {
   return value
     .replace(/\[[^\]]*\]/g, '')
@@ -89,40 +96,26 @@ function cleanMeaning(value: string) {
     .trim();
 }
 
-async function fetchWordMeaning(word: string) {
-  const url = `https://ru.wiktionary.org/w/api.php?action=parse&page=${encodeURIComponent(
-    word,
-  )}&prop=text&format=json&origin=*`;
-  const response = await fetch(url);
+async function fetchOzhegovMeaning(word: string) {
+  const { data, error } = await supabase.functions.invoke<AiTextResponse>('ai', {
+    body: {
+      system:
+        'Ты помогаешь со значениями русских слов для игры. Дай краткое толковое определение на русском языке в стиле словаря Ожегова: понятно, строго, 1-2 предложения. Не пиши длинные цитаты, примеры из литературы, этимологию и лишние пояснения. Если у слова несколько значений, выбери самое обычное.',
+      prompt: `Дай толковое значение слова "${word}" как для школьного словаря.`,
+    },
+  });
 
-  if (!response.ok) {
-    throw new Error('meaning request failed');
+  if (error) {
+    throw new Error(error.message);
   }
 
-  const data = (await response.json()) as {
-    parse?: {
-      text?: {
-        '*': string;
-      };
-    };
-  };
-  const html = data.parse?.text?.['*'];
+  const meaning = cleanMeaning(data?.text ?? '').replace(/^["«]|["»]$/g, '');
 
-  if (!html) {
+  if (meaning.length < 12) {
     throw new Error('meaning not found');
   }
 
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  const items = Array.from(doc.querySelectorAll('.mw-parser-output ol li'));
-  const definition = items
-    .map((item) => cleanMeaning(item.textContent ?? ''))
-    .find((text) => text.length > 20 && !text.includes('◆'));
-
-  if (!definition) {
-    throw new Error('meaning not found');
-  }
-
-  return definition;
+  return meaning;
 }
 
 function pickRandomWord(currentWord?: string) {
@@ -152,19 +145,127 @@ function getDistance(word: string, targetWord: string) {
   return Math.max(2, Math.min(99, rawDistance));
 }
 
-function createGuestGuess(word: string, targetWord: string): Guess {
+const TOPIC_WORDS: Record<string, readonly string[]> = {
+  material: ['резина', 'шина', 'колесо', 'машина', 'ремонт', 'завод', 'железо', 'стекло', 'ткань', 'сверло', 'шланг', 'мотор', 'техника', 'сапог', 'ремень'],
+  entertainment: ['развлечение', 'игра', 'кино', 'театр', 'музыка', 'танец', 'спорт', 'праздник', 'шутка', 'хобби', 'фокус', 'артист', 'афиша'],
+  food: ['еда', 'хлеб', 'молоко', 'яблоко', 'банан', 'сахар', 'чай', 'суп', 'сыр', 'мясо', 'овощ', 'фрукт'],
+  nature: ['лес', 'вода', 'море', 'река', 'солнце', 'луна', 'звезда', 'камень', 'трава', 'дерево', 'ветер', 'снег'],
+  place: ['дом', 'школа', 'город', 'парк', 'улица', 'магазин', 'класс', 'комната', 'театр', 'гараж', 'завод'],
+};
+
+function getWordTopics(word: string) {
+  return Object.entries(TOPIC_WORDS)
+    .filter(([, words]) => words.includes(word))
+    .map(([topic]) => topic);
+}
+
+function hasSharedTopic(word: string, targetWord: string) {
+  const wordTopics = getWordTopics(word);
+  const targetTopics = getWordTopics(targetWord);
+
+  if (wordTopics.length === 0 || targetTopics.length === 0) return true;
+  return wordTopics.some((topic) => targetTopics.includes(topic));
+}
+
+function tuneSemanticDistance(distance: number, word: string, targetWord: string) {
+  if (word === targetWord) return 2;
+  if (!hasSharedTopic(word, targetWord) && distance < 68) return 72;
+  return distance;
+}
+
+function parseDistance(value: string) {
+  const jsonMatch = value.match(/\{[\s\S]*\}/);
+
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]) as { distance?: unknown };
+      const distance = Number(parsed.distance);
+
+      if (Number.isFinite(distance)) {
+        return Math.max(2, Math.min(99, Math.round(distance)));
+      }
+    } catch {
+      // Gemini may answer with plain text; fall through to number parsing.
+    }
+  }
+
+  const numberMatch = value.match(/\d+/);
+  if (!numberMatch) return null;
+
+  const distance = Number(numberMatch[0]);
+  return Number.isFinite(distance) ? Math.max(2, Math.min(99, Math.round(distance))) : null;
+}
+
+async function getSemanticDistance(word: string, targetWord: string) {
+  const { data, error } = await supabase.functions.invoke<AiTextResponse>('ai', {
+    body: {
+      system:
+        'Ты оцениваешь русские слова для игры Association. Верни только JSON вида {"distance": число}. Оценивай только смысл, тему и обычные ассоциации, не похожесть букв. 2-10 почти синоним или часть одного предмета, 11-25 очень близкая ассоциация, 26-45 та же тема, 46-67 слабая связь, 68-99 другая тема. Не делай абстрактные слова слишком близкими к конкретным предметам. Пример: секрет "резина", игрок "шина" = 12, "колесо" = 22, "машина" = 35, "развлечение" = 82, "музыка" = 88.',
+      prompt: `Секретное слово: "${targetWord}". Слово игрока: "${word}". Верни расстояние по смыслу.`,
+    },
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const distance = parseDistance(data?.text ?? '');
+  if (distance === null) {
+    throw new Error('AI did not return distance');
+  }
+
+  return tuneSemanticDistance(distance, word, targetWord);
+}
+
+async function getSmartDistance(word: string, targetWord: string) {
+  return getSemanticDistance(word, targetWord);
+}
+
+async function getAiClue(word: string, clueIndex: number) {
+  const clueStyle = [
+    'Дай очень простую категорию слова, например: предмет, место, еда, природа, чувство, действие. Не называй само слово.',
+    'Дай простую ситуацию, где это можно встретить или использовать. Не называй само слово.',
+    'Дай 2-3 близкие ассоциации, но не само слово и не однокоренные слова.',
+  ][clueIndex] ?? 'Дай понятную подсказку, не называя само слово.';
+
+  const { data, error } = await supabase.functions.invoke<AiTextResponse>('ai', {
+    body: {
+      system:
+        'Ты делаешь подсказки для русской игры в ассоциации. Подсказка должна быть понятной подростку, короткой, на русском языке. Запрещено писать секретное слово, его часть, первую букву, длину слова или однокоренные слова.',
+      prompt: `Секретное слово: "${word}". ${clueStyle} Верни только текст подсказки, без кавычек и без пояснений.`,
+    },
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const clue = (data?.text ?? '').trim().replace(/^["«]|["»]$/g, '');
+
+  if (!clue || clue.toLowerCase().includes(word.toLowerCase())) {
+    throw new Error('AI clue is unsafe');
+  }
+
+  return clue;
+}
+
+async function getSmartClue(word: string, clueIndex: number) {
+  return getAiClue(word, clueIndex);
+}
+
+function createGuestGuess(word: string, distance: number): Guess {
   return {
     id: `${Date.now()}-${word}`,
     guess_word: word,
     created_at: new Date().toISOString(),
-    distance: getDistance(word, targetWord),
+    distance,
   };
 }
 
 function withDistance(item: StoredGuess, targetWord: string): Guess {
   return {
     ...item,
-    distance: item.distance ?? getDistance(item.guess_word, targetWord),
+    distance: item.distance ?? tuneSemanticDistance(getDistance(item.guess_word, targetWord), item.guess_word, targetWord),
   };
 }
 
@@ -199,6 +300,7 @@ export function ConnectionGame({
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<GameStatus>('playing');
   const [shownClues, setShownClues] = useState<string[]>([]);
+  const [clueLoading, setClueLoading] = useState(false);
   const [showAd, setShowAd] = useState(false);
   const [showWordMeaning, setShowWordMeaning] = useState(false);
   const [wordMeaning, setWordMeaning] = useState('');
@@ -206,7 +308,7 @@ export function ConnectionGame({
   const [meaningSource, setMeaningSource] = useState('');
 
   const roundFinished = status !== 'playing';
-  const availableClues = getHardClues(targetWord);
+  const availableCluesCount = MAX_AI_CLUES;
 
   async function loadHistory() {
     if (isGuest) {
@@ -216,7 +318,7 @@ export function ConnectionGame({
 
     const { data, error } = await supabase
       .from('association_guesses')
-      .select('id, guess_word, created_at')
+      .select('id, guess_word, created_at, distance')
       .eq('target_word', targetWord)
       .order('created_at', { ascending: false });
 
@@ -232,21 +334,22 @@ export function ConnectionGame({
     loadHistory();
   }, [isGuest, targetWord]);
 
-  async function saveGuestAssociation(word: string) {
+  async function saveGuestAssociation(word: string, distance: number) {
     const oldHistory = loadGuestHistory(targetWord);
     const alreadySaved = oldHistory.some((item) => item.guess_word === word);
-    const nextHistory = alreadySaved ? oldHistory : [createGuestGuess(word, targetWord), ...oldHistory];
+    const nextHistory = alreadySaved ? oldHistory : [createGuestGuess(word, distance), ...oldHistory];
     localStorage.setItem(getGuestHistoryKey(targetWord), JSON.stringify(nextHistory));
     setHistory(nextHistory);
   }
 
-  async function saveSignedInAssociation(word: string) {
+  async function saveSignedInAssociation(word: string, distance: number) {
     const { error } = await supabase
       .from('association_guesses')
       .upsert(
         {
           target_word: targetWord,
           guess_word: word,
+          distance,
         },
         {
           onConflict: 'user_id,target_word,guess_word',
@@ -270,6 +373,7 @@ export function ConnectionGame({
     setMessage('');
     setStatus('playing');
     setShownClues([]);
+    setClueLoading(false);
     setShowAd(false);
     setShowWordMeaning(false);
     setWordMeaning('');
@@ -277,25 +381,47 @@ export function ConnectionGame({
   }
 
   function openAdForClue() {
-    if (roundFinished || shownClues.length >= availableClues.length) return;
+    if (roundFinished || shownClues.length >= availableCluesCount) return;
     setShowAd(true);
   }
 
-  function closeAdAndShowClue() {
-    setShownClues((currentClues) => [...currentClues, availableClues[currentClues.length]]);
-    setShowAd(false);
+  async function revealNextClue() {
+    if (roundFinished || shownClues.length >= availableCluesCount || clueLoading) return false;
+
+    setClueLoading(true);
+    setMessage('');
+
+    try {
+      const clue = await getSmartClue(targetWord, shownClues.length);
+      setShownClues((currentClues) => [...currentClues, clue]);
+      return true;
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : 'ИИ не смог сделать подсказку.');
+      setMessage('ИИ сейчас недоступен. Проверь Supabase функцию ai и GEMINI_API_KEY.');
+      return false;
+    } finally {
+      setClueLoading(false);
+    }
   }
 
-  function buyClue() {
-    if (roundFinished || shownClues.length >= availableClues.length) return;
+  async function closeAdAndShowClue() {
+    setShowAd(false);
+    await revealNextClue();
+  }
 
-    if (!onSpendCoins()) {
+  async function buyClue() {
+    if (roundFinished || shownClues.length >= availableCluesCount || clueLoading) return;
+
+    if (coins < hintCost) {
       setMessage(`Нужно ${hintCost} монет для подсказки.`);
       return;
     }
 
-    setShownClues((currentClues) => [...currentClues, availableClues[currentClues.length]]);
-    setMessage(`Подсказка куплена за ${hintCost} монет.`);
+    const clueRevealed = await revealNextClue();
+
+    if (clueRevealed && onSpendCoins()) {
+      setMessage(`Подсказка куплена за ${hintCost} монет.`);
+    }
   }
 
   function giveUp() {
@@ -328,17 +454,28 @@ export function ConnectionGame({
       return;
     }
 
+    let distance: number;
+
+    try {
+      distance = await getSmartDistance(word, targetWord);
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : 'ИИ не смог сравнить слова.');
+      setMessage('ИИ сейчас недоступен. Без ИИ Association не может сравнить слова по смыслу.');
+      setBusy(false);
+      return;
+    }
+
     if (isGuest) {
-      await saveGuestAssociation(word);
+      await saveGuestAssociation(word, distance);
     } else {
-      const saved = await saveSignedInAssociation(word);
+      const saved = await saveSignedInAssociation(word, distance);
       if (!saved) {
         setBusy(false);
         return;
       }
     }
 
-    setLastResult({ word, distance: getDistance(word, targetWord) });
+    setLastResult({ word, distance });
     setInputWord('');
     setBusy(false);
   }
@@ -357,12 +494,13 @@ export function ConnectionGame({
     setMeaningSource('');
 
     try {
-      const meaning = await fetchWordMeaning(word);
+      const meaning = await fetchOzhegovMeaning(word);
       setWordMeaning(meaning);
-      setMeaningSource('Викисловарь');
-    } catch {
-      setWordMeaning(getLocalWordMeaning(word));
-      setMeaningSource('локальный словарь');
+      setMeaningSource('толковый словарь Ожегова');
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : 'ИИ не смог найти значение слова.');
+      setWordMeaning('ИИ сейчас недоступен. Не получилось получить толковое значение слова.');
+      setMeaningSource('');
     } finally {
       setMeaningLoading(false);
     }
@@ -372,10 +510,10 @@ export function ConnectionGame({
     <section className="game-shell">
       <div className="game-card">
         <p className="hello">Игрок: {userEmail}</p>
-        <h2>Connection</h2>
+        <h2>Association</h2>
         <p className="game-subtitle">
           Введи слово. Если это секретное слово, ты выиграешь. Если нет, игра покажет
-          расстояние до ответа: чем меньше число, тем ближе твое слово.
+          расстояние по смыслу: чем меньше число, тем ближе твоя ассоциация к ответу.
         </p>
 
         <p className="guest-note">
@@ -407,18 +545,18 @@ export function ConnectionGame({
           <button
             className="soft-button"
             onClick={buyClue}
-            disabled={roundFinished || shownClues.length >= availableClues.length || coins < hintCost}
+            disabled={roundFinished || shownClues.length >= availableCluesCount || coins < hintCost || clueLoading}
             type="button"
           >
-            Подсказка за {hintCost} монет
+            {clueLoading ? 'Готовим...' : `Подсказка за ${hintCost} монет`}
           </button>
           <button
             className="soft-button"
             onClick={openAdForClue}
-            disabled={roundFinished || shownClues.length >= availableClues.length || showAd}
+            disabled={roundFinished || shownClues.length >= availableCluesCount || showAd || clueLoading}
             type="button"
           >
-            Подсказка за рекламу
+            {clueLoading ? 'Готовим...' : 'Подсказка за рекламу'}
           </button>
           <button className="danger-button" onClick={giveUp} disabled={roundFinished}>
             Сдаться
@@ -452,7 +590,7 @@ export function ConnectionGame({
             </button>
             {showWordMeaning && (
               <p className="distance-help">
-                {meaningLoading ? 'Ищем значение слова в интернете...' : wordMeaning}
+                {meaningLoading ? 'Ищем значение в толковом словаре...' : wordMeaning}
                 {!meaningLoading && meaningSource && (
                   <span className="meaning-source">Источник: {meaningSource}</span>
                 )}
