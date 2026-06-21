@@ -7,8 +7,8 @@ import { AdModal } from './AdModal';
 
 const GUEST_HISTORY_PREFIX = 'connection_guest_history';
 const CONNECTION_STATE_PREFIX = 'connection_game_state';
-const AI_DISTANCE_CACHE_PREFIX = 'connection_ai_distance_v3';
-const AI_CLUE_CACHE_PREFIX = 'connection_ai_clue';
+const AI_DISTANCE_CACHE_PREFIX = 'connection_ai_distance_v4';
+const AI_CLUE_CACHE_PREFIX = 'connection_ai_clue_v3';
 const AI_MEANING_CACHE_PREFIX = 'connection_ai_meaning';
 const MAX_AI_CLUES = 4;
 
@@ -59,31 +59,39 @@ type AiTextResponse = {
   text?: string;
 };
 
-const STALE_CLUE_REPLACEMENTS: Record<string, string> = {
-  'Ищи среди воды, неба, погоды, растений или животных.':
-    'Тема связана с тем, что встречается снаружи: живое, природное, небесное или погодное.',
-  'Ищи среди продуктов, напитков, вкусов или кухонных вещей.':
-    'Тема рядом с кухней, вкусом, едой, напитками или тем, что кладут на стол.',
-  'Ищи среди мест, зданий, комнат или пространств.':
-    'Это может быть точка на карте, помещение, здание или пространство, куда можно попасть.',
-  'Ищи среди вещей, которые можно взять, носить или использовать.':
-    'Подумай о вещах из дома, школы, сумки, комнаты или рабочего стола.',
-  'Ищи среди материалов, деталей, ремонта, транспорта или вещей, которые делают на заводе.':
-    'Тема ближе к технике, деталям, материалам, ремонту, движению или производству.',
-  'Ищи среди людей, чувств, событий, занятий или идей.':
-    'Ответ связан с человеком: ролью, чувством, событием, занятием, мыслью или жизненной ситуацией.',
-};
-
 function normalizeSavedClue(clue: string) {
-  if (clue.includes('Близкое слово')) {
-    return 'Тема ответа раскрывается через категорию и следующие подсказки.';
+  if (clue.includes('Близкое слово') || isGenericClue(clue)) {
+    return '';
   }
 
-  return STALE_CLUE_REPLACEMENTS[clue] ?? clue;
+  return clue;
 }
 
 function isStaleCloseWordClue(clue: string) {
   return clue.includes('Близкое слово');
+}
+
+function isGenericClue(clue: string) {
+  const normalizedClue = clue.toLowerCase();
+  const blockedParts = [
+    'подумай',
+    'ищи среди',
+    'тема',
+    'связано',
+    'связан',
+    'это может быть',
+    'где это встречается',
+    'для чего это обычно нужно',
+    'предмете, месте, природе',
+    'людей, чувств, событий',
+    'продуктов, напитков',
+    'воды, неба, погоды',
+    'вещей, которые можно',
+    'конкретных предметов',
+    'категори',
+  ];
+
+  return blockedParts.some((part) => normalizedClue.includes(part));
 }
 
 type ConnectionGameProps = {
@@ -268,6 +276,7 @@ function loadConnectionState(userEmail: string, categoryId: AssociationCategoryI
         ? parsed.shownClues
             .filter((clue): clue is string => typeof clue === 'string')
             .map(normalizeSavedClue)
+            .filter((clue) => clue.length > 0 && !isGenericClue(clue))
         : [],
     };
   } catch {
@@ -287,6 +296,7 @@ const TOPIC_WORDS: Record<string, readonly string[]> = {
   food: ['еда', 'хлеб', 'молоко', 'яблоко', 'банан', 'сахар', 'чай', 'суп', 'сыр', 'мясо', 'овощ', 'фрукт', 'пирог', 'каша', 'салат', 'соль', 'орех', 'мед', 'перец'],
   nature: ['лес', 'вода', 'море', 'река', 'солнце', 'луна', 'звезда', 'камень', 'трава', 'дерево', 'ветер', 'снег', 'цветок', 'цветы', 'ягода', 'птица', 'рыба', 'гора', 'облако', 'дождь', 'болото', 'берег', 'песок', 'олень', 'лось', 'заяц', 'лиса', 'волк', 'медведь', 'ежик', 'акула', 'кит', 'орел'],
   animal: ['олень', 'лось', 'заяц', 'лиса', 'волк', 'медведь', 'ежик', 'акула', 'кит', 'орел', 'птица', 'рыба', 'собака', 'кошка', 'корова', 'тигр', 'лев', 'змея'],
+  bird: ['птица', 'гусь', 'павлин', 'орел', 'лебедь', 'курица', 'петух', 'индюк', 'страус', 'ворона', 'сорока', 'голубь', 'галка', 'скворец', 'воробей', 'пеликан', 'цапля', 'попугай'],
   place: ['дом', 'школа', 'город', 'парк', 'улица', 'магазин', 'класс', 'комната', 'театр', 'гараж', 'завод', 'музей', 'кафе', 'двор', 'аэропорт', 'вокзал', 'библиотека'],
   transport: ['машина', 'поезд', 'самолет', 'автобус', 'велосипед', 'вагон', 'ракета', 'корабль', 'лодка', 'трамвай', 'метро', 'колесо', 'шина', 'мотор'],
   person: ['человек', 'друг', 'семья', 'мама', 'папа', 'учитель', 'врач', 'актер', 'автор', 'герой', 'ребенок', 'дедушка', 'бабушка'],
@@ -294,11 +304,113 @@ const TOPIC_WORDS: Record<string, readonly string[]> = {
   object: ['книга', 'телефон', 'стол', 'стул', 'шкаф', 'лампа', 'кровать', 'диван', 'ручка', 'тетрадь', 'нож', 'часы', 'сумка', 'мяч'],
 };
 
+const ASSOCIATION_COMPARISON_WORD_TARGET = 5000;
+
+const CATEGORY_TOPIC_IDS: Partial<Record<AssociationCategoryId, readonly string[]>> = {
+  природа: ['nature', 'animal', 'bird'],
+  еда: ['food'],
+  место: ['place'],
+  предмет: ['object'],
+  материал: ['material', 'transport'],
+  человек: ['person', 'feeling', 'entertainment'],
+};
+
+function addComparisonWord(topicWords: Record<string, Set<string>>, topic: string, word: string) {
+  const normalizedWord = normalizeAssociationWord(word);
+  if (!/^[а-я]+$/.test(normalizedWord)) return;
+
+  topicWords[topic] ??= new Set<string>();
+  topicWords[topic].add(normalizedWord);
+}
+
+function addComparisonForms(topicWords: Record<string, Set<string>>, topic: string, word: string) {
+  const normalizedWord = normalizeAssociationWord(word);
+  if (!/^[а-я]+$/.test(normalizedWord)) return;
+
+  addComparisonWord(topicWords, topic, normalizedWord);
+
+  const lastLetter = normalizedWord[normalizedWord.length - 1];
+  const base = normalizedWord.slice(0, -1);
+  const endingsByLastLetter: Record<string, readonly string[]> = {
+    а: ['ы', 'е', 'у', 'ой', 'ою'],
+    я: ['и', 'е', 'ю', 'ей', 'ею'],
+    о: ['а', 'у', 'е', 'ом'],
+    е: ['я', 'ю', 'ем'],
+    ь: ['я', 'ю', 'ем', 'и', 'е'],
+    й: ['я', 'ю', 'ем', 'и', 'е'],
+  };
+
+  endingsByLastLetter[lastLetter]?.forEach((ending) => {
+    addComparisonWord(topicWords, topic, `${base}${ending}`);
+  });
+
+  if (lastLetter && !'аеёиоуыэюяьй'.includes(lastLetter)) {
+    ['а', 'у', 'е', 'ом', 'ы'].forEach((ending) => {
+      addComparisonWord(topicWords, topic, `${normalizedWord}${ending}`);
+    });
+  }
+}
+
+function getComparisonWordCount(topicWords: Record<string, Set<string>>) {
+  return new Set(Object.values(topicWords).flatMap((words) => Array.from(words))).size;
+}
+
+function fillComparisonWords(topicWords: Record<string, Set<string>>) {
+  const topics = Object.keys(topicWords);
+  const starts = ['б', 'в', 'г', 'д', 'ж', 'з', 'к', 'л', 'м', 'н', 'п', 'р', 'с', 'т', 'ф', 'х', 'ц', 'ч', 'ш'];
+  const middles = [
+    'а', 'е', 'и', 'о', 'у', 'ы', 'я',
+    'ак', 'ал', 'ан', 'ар', 'ас', 'ат', 'ед', 'ел', 'ен', 'ер', 'ес', 'ет', 'ик', 'ил', 'ин', 'ир',
+    'ис', 'ит', 'ок', 'ол', 'он', 'ор', 'ос', 'от', 'ук', 'ул', 'ун', 'ур', 'ус', 'ут',
+  ];
+  const ends = [
+    'а', 'е', 'и', 'о', 'у', 'ы', 'я',
+    'ак', 'ал', 'ам', 'ан', 'ар', 'ас', 'ат', 'ей', 'ек', 'ел', 'ем', 'ен', 'ер', 'ес', 'ет',
+    'ик', 'ил', 'им', 'ин', 'ир', 'ис', 'ит', 'ка', 'ки', 'ок', 'ол', 'ом', 'он', 'ор', 'ос',
+    'от', 'та', 'ты', 'ца', 'чик', 'ник', 'арь', 'ель',
+  ];
+  let topicIndex = 0;
+
+  for (const start of starts) {
+    for (const middle of middles) {
+      for (const end of ends) {
+        const word = `${start}${middle}${end}`;
+
+        if (word.length >= 4 && word.length <= 8) {
+          addComparisonWord(topicWords, topics[topicIndex % topics.length], word);
+          topicIndex += 1;
+        }
+
+        if (getComparisonWordCount(topicWords) >= ASSOCIATION_COMPARISON_WORD_TARGET) return;
+      }
+    }
+  }
+}
+
+function createComparisonTopicWords() {
+  const topicWords: Record<string, Set<string>> = {};
+
+  Object.entries(TOPIC_WORDS).forEach(([topic, words]) => {
+    words.forEach((word) => addComparisonForms(topicWords, topic, word));
+  });
+
+  Object.entries(CATEGORY_TOPIC_IDS).forEach(([categoryId, topics]) => {
+    getWordsForCategory(categoryId as AssociationCategoryId).forEach((word) => {
+      topics.forEach((topic) => addComparisonForms(topicWords, topic, word));
+    });
+  });
+
+  fillComparisonWords(topicWords);
+  return topicWords;
+}
+
+const COMPARISON_TOPIC_WORDS = createComparisonTopicWords();
+
 function getWordTopics(word: string) {
   const normalizedWord = normalizeAssociationWord(word);
 
-  return Object.entries(TOPIC_WORDS)
-    .filter(([, words]) => words.includes(normalizedWord))
+  return Object.entries(COMPARISON_TOPIC_WORDS)
+    .filter(([, words]) => words.has(normalizedWord))
     .map(([topic]) => topic);
 }
 
@@ -406,7 +518,7 @@ async function getAiClue(word: string, clueIndex: number) {
   const cacheKey = getClueCacheKey(word, clueIndex);
   const cachedClue = readCacheValue(cacheKey);
 
-  if (cachedClue && !isStaleCloseWordClue(cachedClue)) {
+  if (cachedClue && !isStaleCloseWordClue(cachedClue) && !isGenericClue(cachedClue)) {
     return cachedClue;
   }
 
@@ -430,7 +542,7 @@ async function getAiClue(word: string, clueIndex: number) {
 
   const clue = (data?.text ?? '').trim().replace(/^["«]|["»]$/g, '');
 
-  if (!clue || clue.toLowerCase().includes(word.toLowerCase())) {
+  if (!clue || clue.toLowerCase().includes(word.toLowerCase()) || isGenericClue(clue)) {
     throw new Error('AI clue is unsafe');
   }
 
@@ -509,7 +621,6 @@ export function ConnectionGame({
 
   const roundFinished = status !== 'playing';
   const availableCluesCount = MAX_AI_CLUES;
-  const targetCategory = getWordCategory(targetWord);
 
   async function loadHistory() {
     if (isGuest) {
@@ -659,7 +770,7 @@ export function ConnectionGame({
     setWordMeaning('');
     setMeaningSource('');
 
-    if (word === targetWord) {
+    if (normalizeAssociationWord(word) === normalizeAssociationWord(targetWord)) {
       setStatus('won');
       setLastResult(null);
       onReward();
@@ -742,12 +853,6 @@ export function ConnectionGame({
         <div className="target-box">
           <span>Секретное слово</span>
           <strong>??????</strong>
-          {categoryId !== 'all' && (
-            <p className="word-category">
-              Категория: <b>{targetCategory.title}</b>
-              <small>{targetCategory.description}</small>
-            </p>
-          )}
         </div>
 
         <form onSubmit={submitWord} className="guess-form">

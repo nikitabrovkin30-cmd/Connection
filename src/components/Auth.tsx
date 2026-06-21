@@ -60,7 +60,7 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
     return (
       <section className="card intro-card">
         <span className="intro-kicker">Игры в проекте</span>
-        <h2>Association Wordle Puzzle</h2>
+        <h2>Association Wordle Puzzle Who am I?</h2>
 
         <div className="intro-grid">
           <article className="intro-panel wordle-panel">
@@ -100,6 +100,19 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
               <li>Чем сложнее режим, тем больше нужно думать над формулировкой.</li>
             </ul>
           </article>
+
+          <article className="intro-panel who-panel">
+            <h3>Who am I?</h3>
+            <p>
+              Who am I? - это игра, где нужно угадать секретное слово через вопросы. Игра отвечает только
+              “да” или “нет”, а ты постепенно сужаешь варианты.
+            </p>
+            <ul>
+              <li>Задавай вопросы вроде: “это живое?”, “это можно есть?”, “это предмет?”.</li>
+              <li>Когда появилась догадка, напиши ответ в поле ниже.</li>
+              <li>Если застрял, можно открыть подсказку за монеты или рекламу.</li>
+            </ul>
+          </article>
         </div>
 
         <button className="next-button" onClick={() => setShowIntro(false)} type="button">
@@ -118,12 +131,13 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
       </div>
 
       <h2>Вход в игру</h2>
-      <p className="auth-subtitle">Войди по mail и выбирай режим: Association, Wordle или Puzzle.</p>
+      <p className="auth-subtitle">Войди по mail и выбирай режим: Association, Wordle, Puzzle или Who am I?.</p>
 
       <div className="lobby-preview" aria-hidden="true">
         <span>Association</span>
         <span>Wordle</span>
         <span>Puzzle</span>
+        <span>Who am I?</span>
       </div>
 
       <form onSubmit={handleSubmit} className="form">

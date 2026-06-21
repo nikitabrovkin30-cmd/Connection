@@ -78,7 +78,7 @@ body {
 
 .mode-tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 6px;
   margin-bottom: 10px;
 }
@@ -152,7 +152,7 @@ body {
 }
 
 .intro-card {
-  max-width: 960px;
+  max-width: 1040px;
 }
 
 .intro-kicker {
@@ -166,40 +166,40 @@ body {
 
 .intro-card h2 {
   margin-bottom: 18px;
-  font-size: clamp(34px, 7vw, 56px);
+  font-size: clamp(30px, 6vw, 48px);
   line-height: 1;
 }
 
 .intro-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 
 .intro-panel {
   display: grid;
   align-content: start;
-  gap: 10px;
-  min-height: 260px;
-  padding: 18px;
+  gap: 8px;
+  min-height: 250px;
+  padding: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
 }
 
 .intro-panel h3 {
-  font-size: 24px;
+  font-size: 21px;
 }
 
 .intro-panel p,
 .intro-panel li {
   color: var(--muted);
-  font-size: 15px;
-  line-height: 1.45;
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .intro-panel ul {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   padding-left: 18px;
 }
 
@@ -217,6 +217,10 @@ body {
 
 .puzzle-panel {
   background: linear-gradient(135deg, #fff7d8, #f4efff);
+}
+
+.who-panel {
+  background: linear-gradient(135deg, #e0f7fa, #fff1ea);
 }
 
 .lobby-card {
@@ -285,7 +289,7 @@ body {
 
 .lobby-preview {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 10px;
   margin-bottom: 18px;
 }
@@ -308,9 +312,14 @@ body {
   color: #4c1d95;
 }
 
-.lobby-preview span:last-child {
+.lobby-preview span:nth-child(3) {
   background: linear-gradient(135deg, #fff7d8, #f4efff);
   color: #7c2d12;
+}
+
+.lobby-preview span:nth-child(4) {
+  background: linear-gradient(135deg, #e0f7fa, #fff1ea);
+  color: #0f5f6c;
 }
 
 .form,
@@ -757,6 +766,97 @@ button.ghost:hover {
   font-weight: 700;
 }
 
+.who-shell {
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.who-card {
+  padding: 20px;
+  border-color: #c7d7ff;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f3f7ff 100%);
+}
+
+.who-card h2 {
+  font-size: clamp(30px, 6vw, 48px);
+}
+
+.who-secret {
+  margin: 12px 0;
+  border-color: #c7d7ff;
+  background: #eef4ff;
+}
+
+.who-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.who-form input {
+  min-width: 0;
+}
+
+.who-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.who-actions .next-button {
+  margin-top: 0;
+}
+
+.who-history {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #c7d7ff;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.who-history h3 {
+  font-size: 18px;
+}
+
+.who-history p {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.who-history ul {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+}
+
+.who-history li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fafbff;
+}
+
+.who-history li span {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.who-history li strong {
+  color: #2f5597;
+  font-size: 18px;
+}
+
 .wordle-shell .game-card {
   border-color: #bddbd1;
   background:
@@ -765,7 +865,7 @@ button.ghost:hover {
 
 .wordle-modes {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 6px;
   margin-bottom: 10px;
 }
@@ -781,6 +881,22 @@ button.ghost:hover {
   border-color: #2f7d68;
   background: #2f7d68;
   color: #fff;
+}
+
+.daily-word-note {
+  margin: -2px 0 10px;
+  padding: 8px 10px;
+  border: 1px solid #f0d8a4;
+  border-radius: 8px;
+  background: #fff7df;
+  color: #75530b;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.daily-word-note.finished {
+  margin-top: 10px;
 }
 
 .wordle-board {
@@ -1200,10 +1316,16 @@ button.ghost:hover {
     grid-template-columns: 1fr;
   }
 
-  .mode-tabs,
-  .wordle-modes,
+  .mode-tabs {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   .puzzle-difficulties {
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  .wordle-modes {
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .mode-tab,
@@ -1289,6 +1411,11 @@ button.ghost:hover {
 
   .puzzle-actions {
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  .who-form,
+  .who-actions {
+    grid-template-columns: 1fr;
   }
 
   .puzzle-difficulties {

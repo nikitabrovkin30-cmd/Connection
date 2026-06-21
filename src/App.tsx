@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Auth } from './components/Auth';
 import { ConnectionGame } from './components/ConnectionGame';
 import { PuzzleGame } from './components/PuzzleGame';
+import { WhoAmIGame } from './components/WhoAmIGame';
 import { WordleGame } from './components/WordleGame';
 import chestImage from './assets/chest.svg';
 import { ASSOCIATION_CATEGORIES } from './data/wordBank';
@@ -19,7 +20,7 @@ const LOCAL_GAME_MODE_KEY = 'association_game_mode';
 const LOCAL_ASSOCIATION_CATEGORY_KEY = 'association_category';
 const PRODUCTION_APP_URL = 'https://connection-cyan.vercel.app';
 
-type GameMode = 'connection' | 'wordle' | 'puzzle';
+type GameMode = 'connection' | 'wordle' | 'puzzle' | 'who';
 type PlayerProfile = {
   user_id: string;
   nickname: string;
@@ -33,6 +34,7 @@ function isMissingSessionError(message: string) {
 
 function loadSavedMode(): GameMode {
   const savedMode = localStorage.getItem(LOCAL_GAME_MODE_KEY);
+  if (savedMode === 'who') return 'who';
   if (savedMode === 'puzzle') return 'puzzle';
   return savedMode === 'wordle' ? 'wordle' : 'connection';
 }
@@ -442,7 +444,7 @@ export default function App() {
     return (
       <main className="container">
         <section className="card lobby-card">
-          <h1>Association Wordle Puzzle</h1>
+          <h1>Association Wordle Puzzle Who am I?</h1>
           <p className="message">{supabaseConfigError}</p>
           <p className="auth-subtitle">
             В Vercel открой Project Settings {'->'} Environment Variables и проверь переменные.
@@ -463,7 +465,7 @@ export default function App() {
   return (
     <main className="container">
       <header className="header">
-        <h1>Association Wordle Puzzle</h1>
+        <h1>Association Wordle Puzzle Who am I?</h1>
         {nickname && (
           <div className="header-actions">
           <span className="coin-balance">
@@ -513,6 +515,13 @@ export default function App() {
             >
               Puzzle
             </button>
+            <button
+              className={mode === 'who' ? 'mode-tab active' : 'mode-tab'}
+              onClick={() => setMode('who')}
+              type="button"
+            >
+              Who am I?
+            </button>
           </div>
 
           {mode === 'connection' && (
@@ -558,6 +567,17 @@ export default function App() {
 
           {mode === 'puzzle' && (
             <PuzzleGame
+              coins={coins}
+              hintCost={HINT_COST}
+              onReward={rewardSolvedWord}
+              onSpendCoins={() => spendCoins(HINT_COST)}
+              rewardCoins={WIN_REWARD}
+              userEmail={nickname}
+            />
+          )}
+
+          {mode === 'who' && (
+            <WhoAmIGame
               coins={coins}
               hintCost={HINT_COST}
               onReward={rewardSolvedWord}
