@@ -84,9 +84,13 @@ body {
 }
 
 .mode-tab {
+  min-height: 48px;
   border: 1px solid var(--line);
   background: #fff;
   color: var(--muted);
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0;
 }
 
 .mode-tab:hover,
@@ -187,7 +191,16 @@ body {
 }
 
 .intro-panel h3 {
-  font-size: 21px;
+  display: inline-flex;
+  width: fit-content;
+  padding: 5px 9px;
+  border: 1px solid rgba(23, 23, 23, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--ink);
+  font-size: 28px;
+  line-height: 1;
+  box-shadow: 0 8px 18px rgba(25, 32, 28, 0.08);
 }
 
 .intro-panel p,
@@ -300,6 +313,8 @@ body {
   place-items: center;
   border: 1px solid rgba(47, 125, 104, 0.18);
   border-radius: 8px;
+  font-size: 16px;
+  box-shadow: 0 8px 18px rgba(25, 32, 28, 0.08);
 }
 
 .lobby-preview span:first-child {
@@ -1336,6 +1351,11 @@ button.ghost:hover {
     font-size: 12px;
   }
 
+  .mode-tab {
+    min-height: 42px;
+    font-size: 15px;
+  }
+
   .intro-card h2 {
     margin-bottom: 10px;
     font-size: 32px;
@@ -1352,7 +1372,8 @@ button.ghost:hover {
   }
 
   .intro-panel h3 {
-    font-size: 20px;
+    padding: 4px 8px;
+    font-size: 22px;
   }
 
   .intro-panel p,

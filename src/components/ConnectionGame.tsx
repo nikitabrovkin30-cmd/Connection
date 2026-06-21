@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { getHardClues, getWordCategory, getWordsForCategory, SECRET_WORDS } from '../data/wordBank';
 import type { AssociationCategoryId } from '../data/wordBank';
@@ -45,6 +45,8 @@ type LastResult = {
   word: string;
   distance: number;
 };
+
+type ClueProgress = 'start' | 'middle' | 'close';
 
 type SavedConnectionState = {
   targetWord: string;
@@ -174,8 +176,15 @@ function getDistanceCacheKey(word: string, targetWord: string) {
   return `${AI_DISTANCE_CACHE_PREFIX}_${normalizeAssociationWord(targetWord)}_${normalizeAssociationWord(word)}`;
 }
 
-function getClueCacheKey(word: string, clueIndex: number) {
-  return `${AI_CLUE_CACHE_PREFIX}_${normalizeAssociationWord(word)}_${clueIndex}`;
+function getClueProgress(bestDistance?: number): ClueProgress {
+  if (typeof bestDistance !== 'number') return 'start';
+  if (bestDistance <= 25) return 'close';
+  if (bestDistance <= 55) return 'middle';
+  return 'start';
+}
+
+function getClueCacheKey(word: string, clueIndex: number, progress: ClueProgress) {
+  return `${AI_CLUE_CACHE_PREFIX}_${normalizeAssociationWord(word)}_${clueIndex}_${progress}`;
 }
 
 function getMeaningCacheKey(word: string) {
@@ -514,19 +523,33 @@ async function getSmartDistance(word: string, targetWord: string) {
   }
 }
 
-async function getAiClue(word: string, clueIndex: number) {
-  const cacheKey = getClueCacheKey(word, clueIndex);
+async function getAiClue(word: string, clueIndex: number, bestDistance?: number) {
+  const progress = getClueProgress(bestDistance);
+  const cacheKey = getClueCacheKey(word, clueIndex, progress);
   const cachedClue = readCacheValue(cacheKey);
 
   if (cachedClue && !isStaleCloseWordClue(cachedClue) && !isGenericClue(cachedClue)) {
     return cachedClue;
   }
 
-  const clueStyle = [
-    'Дай короткую тематическую подсказку без близкого слова. Опиши область, где можно встретить ответ, но не называй сам ответ, его часть, первую букву или однокоренные слова.',
-    'Дай простую ситуацию, где это можно встретить или использовать. Не называй само слово.',
-    'Дай 2-3 близкие ассоциации, но не само слово и не однокоренные слова.',
-  ][clueIndex] ?? 'Дай понятную подсказку, не называя само слово.';
+  const clueStyleByProgress: Record<ClueProgress, readonly string[]> = {
+    start: [
+      'Игрок еще далеко или только начал. Дай базовую подсказку по широкой теме: где это обычно встречается или к какой области относится. Не делай подсказку слишком прямой.',
+      'Игрок еще не близко. Дай простую жизненную ситуацию, где это можно встретить, но не называй ответ.',
+      'Дай мягкую подсказку через назначение или роль ответа, без букв и без близкого слова.',
+    ],
+    middle: [
+      'Игрок уже в правильной стороне. Дай более полезную подсказку: уточни подгруппу, материал, действие или место, связанное с ответом.',
+      'Игрок уже близко к теме. Дай конкретную ситуацию использования или узнаваемый признак, но не раскрывай слово.',
+      'Дай одну сильную ассоциацию и один признак ответа, но не само слово и не однокоренные слова.',
+    ],
+    close: [
+      'Игрок почти разгадал. Дай очень полезную подсказку: укажи главное отличие ответа от близких слов, но не называй ответ, его часть, первую букву или однокоренные слова.',
+      'Игрок очень близко. Дай точный признак, функцию или контекст, который помогает выбрать именно секретное слово среди похожих.',
+      'Дай подсказку через форму, действие или типичный пример, чтобы можно было добить ответ, но не раскрывай слово.',
+    ],
+  };
+  const clueStyle = clueStyleByProgress[progress][clueIndex] ?? 'Дай понятную подсказку, не называя само слово.';
 
   const { data, error } = await supabase.functions.invoke<AiTextResponse>('ai', {
     body: {
@@ -550,16 +573,26 @@ async function getAiClue(word: string, clueIndex: number) {
   return clue;
 }
 
-async function getSmartClue(word: string, clueIndex: number) {
+function getLocalLetterClue(word: string, clueIndex: number, progress: ClueProgress) {
+  const hardClues = getHardClues(word);
+  const localIndex = progress === 'close' ? clueIndex + 2 : clueIndex;
+  const fallbackIndex = localIndex % hardClues.length;
+
+  return hardClues[localIndex] ?? hardClues[fallbackIndex] ?? `В слове ${Array.from(word).length} букв.`;
+}
+
+async function getSmartClue(word: string, clueIndex: number, bestDistance?: number) {
+  const progress = getClueProgress(bestDistance);
+
   if (clueIndex >= 2) {
-    return getHardClues(word)[clueIndex] ?? 'Открой еще одну подсказку позже.';
+    return getLocalLetterClue(word, clueIndex, progress);
   }
 
   try {
-    return await getAiClue(word, clueIndex);
+    return await getAiClue(word, clueIndex, bestDistance);
   } catch (error) {
     console.error(error instanceof Error ? error.message : 'ИИ не смог сделать подсказку.');
-    return getHardClues(word)[clueIndex] ?? 'Попробуй слово из той же темы.';
+    return getLocalLetterClue(word, clueIndex, progress);
   }
 }
 
@@ -621,6 +654,14 @@ export function ConnectionGame({
 
   const roundFinished = status !== 'playing';
   const availableCluesCount = MAX_AI_CLUES;
+  const bestDistance = useMemo(() => {
+    const distances = [
+      ...(lastResult ? [lastResult.distance] : []),
+      ...history.map((item) => item.distance),
+    ].filter((distance) => Number.isFinite(distance));
+
+    return distances.length > 0 ? Math.min(...distances) : undefined;
+  }, [history, lastResult]);
 
   async function loadHistory() {
     if (isGuest) {
@@ -718,7 +759,7 @@ export function ConnectionGame({
     setMessage('');
 
     try {
-      const clue = await getSmartClue(targetWord, shownClues.length);
+      const clue = await getSmartClue(targetWord, shownClues.length, bestDistance);
       setShownClues((currentClues) => [...currentClues, clue]);
       return true;
     } catch (error) {
