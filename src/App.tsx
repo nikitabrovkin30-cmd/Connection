@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Auth } from './components/Auth';
 import { ConnectionGame } from './components/ConnectionGame';
 import { PuzzleGame } from './components/PuzzleGame';
@@ -19,6 +19,8 @@ const LOCAL_GUEST_COINS_KEY = 'association_guest_coins';
 const LOCAL_GUEST_SOLVED_KEY = 'association_guest_solved_words';
 const LOCAL_GAME_MODE_KEY = 'association_game_mode';
 const LOCAL_ASSOCIATION_CATEGORY_KEY = 'association_category';
+const LOCAL_MUSIC_ENABLED_KEY = 'association_music_enabled';
+const BACKGROUND_MUSIC_SRC = '/music/ludovico-einaudi.mp3';
 const PRODUCTION_APP_URL = 'https://connection-cyan.vercel.app';
 const ASSOCIATION_CATEGORY_STICKERS: Record<AssociationCategoryId, string> = {
   all: '🎲',
@@ -54,6 +56,10 @@ function loadSavedAssociationCategory(): AssociationCategoryId {
   return ASSOCIATION_CATEGORIES.some((category) => category.id === savedCategory)
     ? (savedCategory as AssociationCategoryId)
     : 'all';
+}
+
+function loadSavedMusicEnabled() {
+  return localStorage.getItem(LOCAL_MUSIC_ENABLED_KEY) === 'true';
 }
 
 function getRedirectUrl() {
@@ -93,6 +99,8 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState('');
   const [isGuest, setIsGuest] = useState(false);
+  const [musicEnabled, setMusicEnabled] = useState(() => loadSavedMusicEnabled());
+  const musicRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     void loadCurrentProfile();
@@ -147,6 +155,28 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(LOCAL_ASSOCIATION_CATEGORY_KEY, associationCategory);
   }, [associationCategory]);
+
+  useEffect(() => {
+    localStorage.setItem(LOCAL_MUSIC_ENABLED_KEY, String(musicEnabled));
+
+    const music = musicRef.current;
+    if (!music) return;
+
+    if (!musicEnabled) {
+      music.pause();
+      return;
+    }
+
+    music.volume = 0.35;
+    music.muted = false;
+    void music.play().catch((error: unknown) => {
+      console.warn('Music did not start. Add the file public/music/ludovico-einaudi.mp3 or press the button again.', error);
+    });
+  }, [musicEnabled]);
+
+  function toggleMusic() {
+    setMusicEnabled((enabled) => !enabled);
+  }
 
   function getNicknameFromEmail(email: string) {
     return email.split('@')[0] || 'Игрок';
@@ -474,6 +504,15 @@ export default function App() {
 
   return (
     <main className="container">
+      <audio ref={musicRef} loop preload="auto" src={BACKGROUND_MUSIC_SRC} />
+      <button
+        aria-label={musicEnabled ? 'Выключить музыку' : 'Включить музыку'}
+        className={musicEnabled ? 'music-toggle active' : 'music-toggle'}
+        onClick={toggleMusic}
+        type="button"
+      >
+        {musicEnabled ? '♫ ON' : '♫ OFF'}
+      </button>
       <header className="header">
         <h1>Association Wordle Puzzle Who am I?</h1>
         {nickname && (

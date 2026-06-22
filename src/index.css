@@ -42,12 +42,34 @@ body {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 10px;
+  padding-right: 86px;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.music-toggle {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 40;
+  width: auto;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: #000;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.music-toggle.active {
+  border-color: #ffc000;
+  background: #ffc000;
+  color: #000;
 }
 
 .coin-balance {
@@ -1010,8 +1032,10 @@ button.ghost:hover {
 
 .wordle-tile.correct {
   border-color: #138a5b;
-  background: #16a36a;
+  background: transparent;
   color: #fff;
+  outline: 2px solid #16a36a;
+  outline-offset: -2px;
 }
 
 .wordle-tile.present {
@@ -1027,9 +1051,11 @@ button.ghost:hover {
 }
 
 .wordle-tile.hint {
-  border-color: #7c3aed;
-  background: #ede9fe;
-  color: #4c1d95;
+  border-color: #16a36a;
+  background: transparent;
+  color: #fff;
+  outline: 2px solid #16a36a;
+  outline-offset: -2px;
 }
 
 .letter-board {
@@ -1104,7 +1130,7 @@ button.ghost:hover {
 
 .ad-card {
   position: relative;
-  width: min(100%, 420px);
+  width: min(100%, 460px);
 }
 
 .ad-close {
@@ -1141,6 +1167,50 @@ button.ghost:hover {
   box-shadow: 0 22px 70px rgba(0, 0, 0, 0.28);
 }
 
+.ad-copy {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  background: #000;
+  color: #fff;
+  text-align: left;
+}
+
+.ad-copy span {
+  color: #ffc000;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.96px;
+  text-transform: uppercase;
+}
+
+.ad-copy h2 {
+  color: #fff;
+  font-size: clamp(28px, 8vw, 44px);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.ad-copy p {
+  color: #969696;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.ad-progress {
+  height: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: #202020;
+}
+
+.ad-progress i {
+  display: block;
+  height: 100%;
+  background: #ffc000;
+  transition: width 0.25s ease;
+}
+
 .ad-image img {
   display: block;
   width: 100%;
@@ -1148,7 +1218,7 @@ button.ghost:hover {
   object-fit: cover;
 }
 
-.ad-image p {
+.ad-image > p {
   padding: 14px 16px;
   background: #fff;
   font-size: 16px;
@@ -1954,9 +2024,11 @@ input:focus {
 }
 
 .wordle-tile.correct {
-  border-color: #ffc000;
-  background: #ffc000;
-  color: #000000;
+  border-color: #16a36a;
+  background: #000000;
+  color: #ffffff;
+  outline: 2px solid #16a36a;
+  outline-offset: -2px;
 }
 
 .wordle-tile.present {
@@ -1972,7 +2044,11 @@ input:focus {
 }
 
 .wordle-tile.hint {
-  outline: 2px solid #ffc000;
+  border-color: #16a36a;
+  background: #000000;
+  color: #ffffff;
+  outline: 2px solid #16a36a;
+  outline-offset: -2px;
 }
 
 .ad-overlay,

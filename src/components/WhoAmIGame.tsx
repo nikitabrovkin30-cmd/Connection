@@ -176,6 +176,25 @@ function getTopicHint(topic: string) {
   return topicHints[topic] ?? 'Попробуй сначала спросить, к какой теме это относится.';
 }
 
+function normalizeHintText(value: string) {
+  return value.trim().toLowerCase().replace(/ё/g, 'е').replace(/[.!?]+$/g, '').replace(/\s+/g, ' ');
+}
+
+function getUniqueHints(hints: readonly string[]) {
+  const seenHints = new Set<string>();
+  const uniqueHints: string[] = [];
+
+  hints.forEach((hint) => {
+    const normalizedHint = normalizeHintText(hint);
+    if (seenHints.has(normalizedHint)) return;
+
+    seenHints.add(normalizedHint);
+    uniqueHints.push(hint);
+  });
+
+  return uniqueHints;
+}
+
 function getWhoHints(word: string) {
   const letters = Array.from(word);
   const topics = getWordTopics(word);
@@ -186,11 +205,11 @@ function getWhoHints(word: string) {
     .map((letter, index) => (index === middleIndex ? letter : '_'))
     .join(' ');
 
-  return [
+  return getUniqueHints([
     topicHint,
     `В слове ${letters.length} ${letterWord}.`,
     `Открытая буква: ${openedLetters}.`,
-  ];
+  ]);
 }
 
 function loadWhoAmIState(userEmail: string): SavedWhoAmIState | null {

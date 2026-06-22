@@ -7,6 +7,7 @@ type AdModalProps = {
 
 export function AdModal({ onClose }: AdModalProps) {
   const [secondsLeft, setSecondsLeft] = useState(15);
+  const progress = ((15 - secondsLeft) / 15) * 100;
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -28,12 +29,19 @@ export function AdModal({ onClose }: AdModalProps) {
           {secondsLeft > 0 ? secondsLeft : 'x'}
         </button>
         <div className="ad-image">
+          <div className="ad-copy">
+            <span>Turbo Hint</span>
+            <h2>Заряд подсказки</h2>
+            <p>
+              {secondsLeft > 0
+                ? `Подсказка откроется через ${secondsLeft} сек.`
+                : 'Готово. Закрой рекламу и забирай подсказку.'}
+            </p>
+            <div className="ad-progress" aria-hidden="true">
+              <i style={{ width: `${progress}%` }} />
+            </div>
+          </div>
           <img src={adPhoto} alt="Реклама" />
-          <p>
-            {secondsLeft > 0
-              ? `Рекламу можно закрыть через ${secondsLeft} сек.`
-              : 'Нажми крестик, чтобы получить подсказку.'}
-          </p>
         </div>
       </div>
     </div>
