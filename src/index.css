@@ -1762,25 +1762,6 @@ input:focus {
   color: #ffc000;
 }
 
-.intro-game-names {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0 0 14px;
-}
-
-.intro-game-names span {
-  display: grid;
-  min-height: 54px;
-  place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  background: rgba(0, 0, 0, 0.72);
-  color: #ffffff;
-  font-size: clamp(15px, 2vw, 24px);
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
 .intro-panel,
 .wordle-panel,
 .association-panel,
@@ -1997,10 +1978,4 @@ input:focus {
 .gift-button {
   border-color: rgba(255, 255, 255, 0.34);
   background: #000000;
-}
-
-@media (max-width: 720px) {
-  .intro-game-names {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
