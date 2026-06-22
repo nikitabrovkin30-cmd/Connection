@@ -8,7 +8,10 @@
 //
 // Модель можно поменять (gemini-2.0-flash — быстрая и бесплатная).
 
-const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+const GEMINI_API_KEYS = [
+  Deno.env.get('GEMINI_API_KEY'),
+  Deno.env.get('GEMINI_API_KEY2'),
+].filter((key): key is string => Boolean(key));
 const MODEL = 'gemini-2.5-flash';
 
 const cors = {
@@ -20,42 +23,62 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   try {
-    if (!GEMINI_API_KEY) {
+    if (GEMINI_API_KEYS.length === 0) {
       throw new Error('Нет GEMINI_API_KEY. Поставь секрет: npm run ai:secret -- GEMINI_API_KEY=...');
     }
     const { prompt, system, json } = await req.json();
     if (!prompt) throw new Error('Нужно поле prompt');
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: system ? { parts: [{ text: system }] } : undefined,
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 256,
-            responseMimeType: json ? 'application/json' : 'text/plain',
-          },
-        }),
-      },
-    );
+    let lastError = 'Gemini request failed';
 
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data?.error?.message ?? 'Gemini request failed');
+    for (const [keyIndex, apiKey] of GEMINI_API_KEYS.entries()) {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: system ? { parts: [{ text: system }] } : undefined,
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.2,
+              maxOutputTokens: 256,
+              responseMimeType: json ? 'application/json' : 'text/plain',
+            },
+          }),
+        },
+      );
+
+      const data = await res.json();
+      if (!res.ok) {
+        const message = data?.error?.message ?? 'Gemini request failed';
+        lastError = message;
+
+        const lowerMessage = message.toLowerCase();
+        const canTryNextKey =
+          keyIndex < GEMINI_API_KEYS.length - 1 &&
+          (res.status === 429 ||
+            lowerMessage.includes('quota') ||
+            lowerMessage.includes('rate') ||
+            lowerMessage.includes('exceeded') ||
+            lowerMessage.includes('limit'));
+
+        if (canTryNextKey) continue;
+        throw new Error(message);
+      }
+
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+      if (!text.trim()) {
+        lastError = data?.promptFeedback?.blockReason ?? 'Gemini returned empty text';
+        continue;
+      }
+
+      return new Response(JSON.stringify({ text }), {
+        headers: { ...cors, 'Content-Type': 'application/json' },
+      });
     }
 
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-    if (!text.trim()) {
-      throw new Error(data?.promptFeedback?.blockReason ?? 'Gemini returned empty text');
-    }
-
-    return new Response(JSON.stringify({ text }), {
-      headers: { ...cors, 'Content-Type': 'application/json' },
-    });
+    throw new Error(lastError);
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e) }), {
       status: 500,

@@ -722,8 +722,113 @@ const EXTRA_PUZZLE_HINTS: Record<string, readonly string[]> = {
   curiosity: ['Она начинается с вопроса.', 'Она тянет к новому знанию.'],
 };
 
+const ALTERNATE_PUZZLE_ANSWERS: Record<string, readonly string[]> = {
+  shadow: ['тень человека', 'силуэт'],
+  clock: ['часики', 'будильник'],
+  book: ['книжка', 'роман', 'учебник'],
+  river: ['ручей', 'поток'],
+  key: ['ключик', 'отмычка'],
+  snow: ['снежок', 'снежинка'],
+  mirror: ['зеркальце'],
+  fire: ['пламя', 'костер', 'костёр'],
+  road: ['путь', 'трасса', 'шоссе'],
+  phone: ['смартфон', 'мобильник', 'сотовый'],
+  sun: ['солнышко', 'светило'],
+  pencil: ['простой карандаш'],
+  window: ['окошко'],
+  letter: ['литера', 'символ'],
+  cloud: ['облачко'],
+  needle: ['швейная игла'],
+  bridge: ['мостик', 'переправа'],
+  map: ['карта мира', 'план'],
+  candle: ['свечка'],
+  dream: ['сновидение'],
+  umbrella: ['зонтик'],
+  chair: ['стульчик', 'кресло'],
+  soap: ['мыльце'],
+  ball: ['мячик'],
+  bag: ['ранец', 'портфель'],
+  lamp: ['светильник', 'лампочка'],
+  spoon: ['ложечка'],
+  bicycle: ['велик', 'байк'],
+  comb: ['расчёска'],
+  plate: ['блюдо'],
+  pillow: ['подушка для сна'],
+  door: ['дверца'],
+  cup: ['стакан'],
+  hat: ['головной убор'],
+  brush: ['зубная щетка', 'зубная щётка'],
+  bed: ['кроватка'],
+  train: ['электричка', 'состав'],
+  apple: ['яблочко'],
+  echo: ['отзвук', 'отголосок'],
+  compass: ['компасик'],
+  calendar: ['календарик'],
+  anchor: ['якорек', 'якорёк'],
+  password: ['код', 'пинкод', 'пин-код'],
+  magnet: ['магнитик'],
+  root: ['корешок'],
+  battery: ['акб', 'батарейка'],
+  thermometer: ['термометр', 'градусник'],
+  seed: ['зерно', 'зернышко', 'зёрнышко'],
+  ladder: ['стремянка'],
+  screen: ['дисплей', 'монитор'],
+  pocket: ['кармашек'],
+  bridge_medium: ['мостик', 'переправа'],
+  notebook: ['записная книжка', 'блокнот'],
+  traffic_light: ['светофорчик'],
+  telescope: ['подзорная труба'],
+  thermos: ['термокружка'],
+  dictionary: ['словарик'],
+  elevator: ['лифт', 'подъемник', 'подъёмник'],
+  fountain: ['фонтанчик'],
+  wallet: ['портмоне', 'бумажник'],
+  glasses: ['очки для зрения'],
+  microphone: ['микрофончик'],
+  compass_school: ['циркуль'],
+  backpack: ['ранец', 'портфель', 'сумка'],
+  receipt: ['квитанция', 'кассовый чек'],
+  keyboard: ['клава'],
+  silence: ['молчание'],
+  time: ['времечко'],
+  secret: ['тайна', 'секретик'],
+  promise: ['клятва', 'слово'],
+  memory: ['воспоминание'],
+  choice: ['решение', 'вариант'],
+  thought: ['идея', 'мысль'],
+  name: ['название', 'имя'],
+  question: ['вопросик'],
+  border: ['граница', 'рубеж'],
+  balance: ['равновесие'],
+  habit: ['обычка'],
+  horizon: ['горизонт'],
+  doubt: ['неуверенность'],
+  experience: ['практика', 'навык'],
+  trace: ['след', 'отпечаток'],
+  rule: ['закон', 'условие'],
+  mask: ['маска', 'личина'],
+  reputation: ['имидж', 'слава'],
+  compromise: ['уступка', 'договоренность', 'договорённость'],
+  contradiction: ['несостыковка', 'противоречие'],
+  responsibility: ['обязанность'],
+  intuition: ['чутье', 'чутьё'],
+  patience: ['выдержка'],
+  observation: ['наблюдение', 'замечание'],
+  perspective: ['ракурс', 'точка зрения'],
+  discipline: ['порядок', 'самоконтроль'],
+  curiosity: ['интерес', 'любознательность'],
+};
+
 function normalizeAnswer(value: string) {
   return value.trim().toLowerCase().replace(/ё/g, 'е');
+}
+
+function normalizeHint(value: string) {
+  return value.trim().toLowerCase().replace(/ё/g, 'е').replace(/[.!?]+$/g, '').replace(/\s+/g, ' ');
+}
+
+function getAcceptedPuzzleAnswers(puzzle: Puzzle) {
+  return [...puzzle.answers, ...(ALTERNATE_PUZZLE_ANSWERS[puzzle.id] ?? [])];
 }
 
 function getLetterHint(answer: string) {
@@ -752,14 +857,25 @@ function getPatternHint(answer: string) {
 }
 
 function getPuzzleHints(puzzle: Puzzle, difficulty: PuzzleDifficulty) {
-  return [
+  const uniqueHints: string[] = [];
+  const seenHints = new Set<string>();
+
+  [
     puzzle.hint,
     ...(EXTRA_PUZZLE_HINTS[puzzle.id] ?? []),
     getLetterHint(puzzle.answers[0]),
     getEndingHint(puzzle.answers[0]),
     getVowelHint(puzzle.answers[0]),
     getPatternHint(puzzle.answers[0]),
-  ].slice(0, getMaxPuzzleHints(difficulty));
+  ].forEach((hint) => {
+    const normalizedHint = normalizeHint(hint);
+    if (seenHints.has(normalizedHint)) return;
+
+    seenHints.add(normalizedHint);
+    uniqueHints.push(hint);
+  });
+
+  return uniqueHints.slice(0, getMaxPuzzleHints(difficulty));
 }
 
 function getPuzzleStateKey(userEmail: string, difficulty: PuzzleDifficulty) {
@@ -923,7 +1039,7 @@ export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoin
     const normalizedAnswer = normalizeAnswer(inputAnswer);
     if (!normalizedAnswer || roundFinished) return;
 
-    const correct = puzzle.answers.some((answer) => normalizeAnswer(answer) === normalizedAnswer);
+    const correct = getAcceptedPuzzleAnswers(puzzle).some((answer) => normalizeAnswer(answer) === normalizedAnswer);
 
     if (!correct) {
       setMessage('Пока не то. Попробуй другую ассоциацию.');

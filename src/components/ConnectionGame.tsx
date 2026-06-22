@@ -581,6 +581,22 @@ function getLocalLetterClue(word: string, clueIndex: number, progress: ClueProgr
   return hardClues[localIndex] ?? hardClues[fallbackIndex] ?? `В слове ${Array.from(word).length} букв.`;
 }
 
+function normalizeClueText(value: string) {
+  return value.trim().toLowerCase().replace(/ё/g, 'е').replace(/[.!?]+$/g, '').replace(/\s+/g, ' ');
+}
+
+function getUniqueLocalLetterClue(word: string, clueIndex: number, progress: ClueProgress, shownClues: readonly string[]) {
+  const shownClueTexts = new Set(shownClues.map(normalizeClueText));
+  const hardClues = getHardClues(word);
+
+  for (let offset = 0; offset < hardClues.length; offset += 1) {
+    const clue = getLocalLetterClue(word, clueIndex + offset, progress);
+    if (!shownClueTexts.has(normalizeClueText(clue))) return clue;
+  }
+
+  return `В слове ${Array.from(word).length} букв.`;
+}
+
 async function getSmartClue(word: string, clueIndex: number, bestDistance?: number) {
   const progress = getClueProgress(bestDistance);
 
@@ -760,7 +776,17 @@ export function ConnectionGame({
 
     try {
       const clue = await getSmartClue(targetWord, shownClues.length, bestDistance);
-      setShownClues((currentClues) => [...currentClues, clue]);
+      const shownClueTexts = new Set(shownClues.map(normalizeClueText));
+      const nextClue = shownClueTexts.has(normalizeClueText(clue))
+        ? getUniqueLocalLetterClue(targetWord, shownClues.length, getClueProgress(bestDistance), shownClues)
+        : clue;
+
+      if (shownClueTexts.has(normalizeClueText(nextClue))) {
+        setMessage('Все разные подсказки уже открыты.');
+        return false;
+      }
+
+      setShownClues((currentClues) => [...currentClues, nextClue]);
       return true;
     } catch (error) {
       console.error(error instanceof Error ? error.message : 'ИИ не смог сделать подсказку.');
