@@ -628,15 +628,24 @@ function withDistance(item: StoredGuess, targetWord: string): Guess {
   };
 }
 
+function sortGuessesByDistance(guesses: Guess[]) {
+  return [...guesses].sort((a, b) => {
+    if (a.distance !== b.distance) return a.distance - b.distance;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+}
+
 function loadGuestHistory(targetWord: string) {
   const saved = localStorage.getItem(getGuestHistoryKey(targetWord));
   if (!saved) return [];
 
   try {
     const parsed = JSON.parse(saved) as StoredGuess[];
-    return parsed
-      .filter((item) => item.id && item.guess_word && item.created_at)
-      .map((item) => withDistance(item, targetWord));
+    return sortGuessesByDistance(
+      parsed
+        .filter((item) => item.id && item.guess_word && item.created_at)
+        .map((item) => withDistance(item, targetWord)),
+    );
   } catch {
     return [];
   }
@@ -696,7 +705,7 @@ export function ConnectionGame({
       return;
     }
 
-    setHistory((data ?? []).map((item) => withDistance(item, targetWord)));
+    setHistory(sortGuessesByDistance((data ?? []).map((item) => withDistance(item, targetWord))));
   }
 
   useEffect(() => {
@@ -720,7 +729,7 @@ export function ConnectionGame({
   async function saveGuestAssociation(word: string, distance: number) {
     const oldHistory = loadGuestHistory(targetWord);
     const alreadySaved = oldHistory.some((item) => item.guess_word === word);
-    const nextHistory = alreadySaved ? oldHistory : [createGuestGuess(word, distance), ...oldHistory];
+    const nextHistory = sortGuessesByDistance(alreadySaved ? oldHistory : [createGuestGuess(word, distance), ...oldHistory]);
     localStorage.setItem(getGuestHistoryKey(targetWord), JSON.stringify(nextHistory));
     setHistory(nextHistory);
   }

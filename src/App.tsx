@@ -20,6 +20,15 @@ const LOCAL_GUEST_SOLVED_KEY = 'association_guest_solved_words';
 const LOCAL_GAME_MODE_KEY = 'association_game_mode';
 const LOCAL_ASSOCIATION_CATEGORY_KEY = 'association_category';
 const PRODUCTION_APP_URL = 'https://connection-cyan.vercel.app';
+const ASSOCIATION_CATEGORY_STICKERS: Record<AssociationCategoryId, string> = {
+  all: '🎲',
+  природа: '🌿',
+  еда: '🍔',
+  место: '🏠',
+  предмет: '🎒',
+  материал: '🧱',
+  человек: '🧑',
+};
 
 type GameMode = 'connection' | 'wordle' | 'puzzle' | 'who';
 type PlayerProfile = {
@@ -535,7 +544,10 @@ export default function App() {
                   title={category.description}
                   type="button"
                 >
-                  {category.title}
+                  <span className="category-sticker" aria-hidden="true">
+                    {ASSOCIATION_CATEGORY_STICKERS[category.id]}
+                  </span>
+                  <span>{category.title}</span>
                 </button>
               ))}
             </div>

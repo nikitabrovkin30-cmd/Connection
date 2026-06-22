@@ -80,16 +80,16 @@ body {
 .mode-tabs {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-bottom: 14px;
 }
 
 .mode-tab {
-  min-height: 48px;
+  min-height: 64px;
   border: 1px solid var(--line);
   background: #fff;
   color: var(--muted);
-  font-size: 18px;
+  font-size: clamp(20px, 2.4vw, 28px);
   font-weight: 900;
   letter-spacing: 0;
 }
@@ -109,12 +109,29 @@ body {
 }
 
 .category-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   min-height: 34px;
   flex: 1 1 150px;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.78);
   color: var(--muted);
   font-size: 13px;
+}
+
+.category-sticker {
+  display: inline-grid;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgba(255, 192, 0, 0.45);
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  font-size: 17px;
+  line-height: 1;
 }
 
 .category-tab:hover,
@@ -1338,6 +1355,8 @@ button.ghost:hover {
 
   .mode-tabs {
     grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
   }
 
   .puzzle-difficulties {
@@ -1357,8 +1376,8 @@ button.ghost:hover {
   }
 
   .mode-tab {
-    min-height: 42px;
-    font-size: 15px;
+    min-height: 54px;
+    font-size: 18px;
   }
 
   .intro-card h2 {
@@ -1530,8 +1549,8 @@ button.ghost:hover {
   }
 
   .mode-tab {
-    min-height: 38px;
-    font-size: 15px;
+    min-height: 48px;
+    font-size: 17px;
   }
 
   .category-tab,
@@ -1843,6 +1862,14 @@ input:focus {
   border-radius: 0;
   background: #000000;
   color: #ffffff;
+}
+
+.mode-tab {
+  border-width: 2px;
+  border-color: rgba(255, 255, 255, 0.42);
+  background: #000000;
+  color: #ffffff;
+  text-transform: uppercase;
 }
 
 .mode-tab:hover,
