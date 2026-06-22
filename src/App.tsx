@@ -11,6 +11,7 @@ import { supabase, supabaseConfigError } from './lib/supabase';
 
 const HINT_COST = 100;
 const WIN_REWARD = 10;
+const REGISTRATION_BONUS_COINS = 50;
 const GIFT_INTERVAL = 5;
 const GIFT_AMOUNTS = [40, 50, 60, 70];
 const LOCAL_GUEST_NAME = 'Гость';
@@ -263,7 +264,7 @@ export default function App() {
     const newProfile: PlayerProfile = {
       user_id: nextUserId,
       nickname: nextNickname,
-      coins: 0,
+      coins: REGISTRATION_BONUS_COINS,
       solved_words: 0,
     };
     const { error } = await supabase.from('player_profiles').insert(newProfile);
