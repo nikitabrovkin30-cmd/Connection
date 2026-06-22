@@ -21,6 +21,7 @@
 
 body {
   min-width: 320px;
+  min-height: 100svh;
   background:
     radial-gradient(circle at 16% 18%, rgba(244, 180, 0, 0.18) 0 120px, transparent 121px),
     radial-gradient(circle at 84% 12%, rgba(124, 58, 237, 0.14) 0 150px, transparent 151px),
@@ -32,7 +33,7 @@ body {
 .container {
   width: min(100%, 1040px);
   margin: 0 auto;
-  padding: 18px 16px 40px;
+  padding: clamp(10px, 2svh, 18px) 16px clamp(18px, 4svh, 40px);
 }
 
 .header {
@@ -504,7 +505,7 @@ button.ghost:hover {
 }
 
 .game-card {
-  padding: 20px;
+  padding: clamp(14px, 2.4svh, 20px);
 }
 
 .game-card h2 {
@@ -1480,5 +1481,166 @@ button.ghost:hover {
 
   .header-actions button {
     width: auto;
+  }
+}
+
+@media (min-width: 721px) and (max-width: 980px) {
+  .container {
+    width: min(100%, 860px);
+  }
+
+  .game-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .history-panel {
+    display: none;
+  }
+
+  .intro-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lobby-preview {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-height: 760px) {
+  .container {
+    padding-top: 8px;
+    padding-bottom: 16px;
+  }
+
+  .header {
+    margin-bottom: 8px;
+  }
+
+  .header h1 {
+    font-size: clamp(20px, 4vw, 26px);
+  }
+
+  .mode-tabs,
+  .category-tabs {
+    margin-bottom: 8px;
+  }
+
+  .mode-tab {
+    min-height: 38px;
+    font-size: 15px;
+  }
+
+  .category-tab,
+  .mode-button,
+  .difficulty-button {
+    min-height: 32px;
+    padding: 6px 8px;
+  }
+
+  .game-card,
+  .history-panel,
+  .card,
+  .puzzle-card {
+    padding: 12px;
+  }
+
+  .game-card h2,
+  .puzzle-card h2,
+  .who-card h2 {
+    font-size: clamp(26px, 5vw, 38px);
+  }
+
+  .game-subtitle,
+  .puzzle-card .game-subtitle {
+    margin-bottom: 8px;
+    font-size: 13px;
+    line-height: 1.25;
+  }
+
+  .target-box,
+  .secret-box,
+  .puzzle-question {
+    margin-bottom: 8px;
+    padding: 10px;
+  }
+
+  .target-box strong,
+  .secret-box strong {
+    font-size: 24px;
+  }
+
+  .guess-form,
+  .who-form,
+  .puzzle-actions,
+  .wordle-actions,
+  .round-actions {
+    gap: 8px;
+  }
+
+  .clue-list,
+  .who-history,
+  .history-panel {
+    max-height: 28svh;
+    overflow: auto;
+  }
+
+  .wordle-tile {
+    width: 34px;
+    height: 34px;
+    font-size: 17px;
+  }
+
+  .wordle-board {
+    gap: 5px;
+  }
+
+  .puzzle-question strong {
+    font-size: 20px;
+    line-height: 1.08;
+  }
+
+  .puzzle-hint {
+    margin: 8px 0;
+    padding: 8px 10px;
+  }
+}
+
+@media (max-width: 420px) {
+  .container {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .mode-tabs {
+    gap: 5px;
+  }
+
+  .mode-tab {
+    min-height: 40px;
+    font-size: 14px;
+  }
+
+  .lobby-preview {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .guess-form,
+  .form-row {
+    flex-direction: column;
+  }
+
+  .guess-form button,
+  .form-row button {
+    width: 100%;
   }
 }
