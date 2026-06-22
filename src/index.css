@@ -33,7 +33,7 @@ body {
 .container {
   width: min(100%, 1040px);
   margin: 0 auto;
-  padding: clamp(10px, 2svh, 18px) 16px clamp(18px, 4svh, 40px);
+  padding: clamp(8px, 1.6svh, 16px) 16px clamp(8px, 1.8svh, 18px);
 }
 
 .header {
@@ -41,7 +41,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .header-actions {
@@ -81,7 +81,7 @@ body {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 6px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .mode-tab {
@@ -804,6 +804,10 @@ button.ghost:hover {
   background: #eef4ff;
 }
 
+.who-secret span + strong {
+  margin-left: 6px;
+}
+
 .who-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1305,12 +1309,12 @@ button.ghost:hover {
 
 @media (max-width: 720px) {
   .container {
-    padding: 14px 10px 32px;
+    padding: 10px 10px 10px;
   }
 
   .header {
     gap: 8px;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }
 
   .header-actions {
@@ -1509,7 +1513,7 @@ button.ghost:hover {
 @media (max-height: 760px) {
   .container {
     padding-top: 8px;
-    padding-bottom: 16px;
+    padding-bottom: 8px;
   }
 
   .header {
@@ -1609,6 +1613,7 @@ button.ghost:hover {
   .container {
     padding-left: 8px;
     padding-right: 8px;
+    padding-bottom: 8px;
   }
 
   .header {
@@ -1642,5 +1647,360 @@ button.ghost:hover {
   .guess-form button,
   .form-row button {
     width: 100%;
+  }
+}
+
+/* Lamborghini-inspired visual layer */
+:root {
+  --bg: #000000;
+  --panel: #202020;
+  --ink: #ffffff;
+  --muted: #969696;
+  --line: rgba(255, 255, 255, 0.22);
+  --accent: #ffc000;
+  --accent-dark: #ffc000;
+  --warm: #ffce3e;
+  --soft-green: #181818;
+  --soft-warm: #202020;
+  color: var(--ink);
+}
+
+body {
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.3), #000000 320px),
+    radial-gradient(circle at 82% 10%, rgba(255, 192, 0, 0.16) 0 120px, transparent 121px),
+    #000000;
+  color: #ffffff;
+}
+
+button,
+input {
+  border-radius: 0;
+  font-family: inherit;
+}
+
+button {
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: transparent;
+  color: #ffffff;
+  text-transform: uppercase;
+  font-weight: 800;
+}
+
+button:hover:not(:disabled) {
+  border-color: #ffc000;
+  background: #ffc000;
+  color: #000000;
+}
+
+button:disabled {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: #181818;
+  color: #666666;
+}
+
+input {
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  background: #000000;
+  color: #ffffff;
+}
+
+input::placeholder {
+  color: #7d7d7d;
+}
+
+input:focus {
+  border-color: #ffc000;
+  outline: 2px solid rgba(255, 192, 0, 0.32);
+}
+
+.card,
+.game-card,
+.history-panel,
+.intro-panel,
+.lobby-card,
+.puzzle-card,
+.who-card,
+.wordle-shell .game-card {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 0;
+  background: #202020;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.header h1,
+.intro-card h2,
+.lobby-card h2,
+.game-card h2,
+.puzzle-card h2,
+.who-card h2 {
+  color: #ffffff;
+  text-transform: uppercase;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.header h1 {
+  font-size: clamp(24px, 5vw, 42px);
+}
+
+.intro-card {
+  background:
+    linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.86)),
+    radial-gradient(circle at 80% 18%, rgba(255, 192, 0, 0.18), transparent 260px),
+    #000000;
+}
+
+.intro-kicker,
+.coin-balance,
+.solved-counter,
+.word-category b,
+.meaning-source,
+.success-message,
+.puzzle-progress {
+  color: #ffc000;
+}
+
+.intro-game-names {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.intro-game-names span {
+  display: grid;
+  min-height: 54px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(0, 0, 0, 0.72);
+  color: #ffffff;
+  font-size: clamp(15px, 2vw, 24px);
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.intro-panel,
+.wordle-panel,
+.association-panel,
+.puzzle-panel,
+.who-panel {
+  background: #181818;
+}
+
+.intro-panel h3 {
+  border: 0;
+  border-bottom: 2px solid #ffc000;
+  border-radius: 0;
+  background: transparent;
+  color: #ffffff;
+  box-shadow: none;
+  text-transform: uppercase;
+}
+
+.intro-panel p,
+.intro-panel li,
+.auth-subtitle,
+.game-subtitle,
+.distance-help,
+.history-panel,
+.who-history,
+.who-history p,
+.word-category,
+.word-category small,
+.message {
+  color: #969696;
+}
+
+.intro-panel strong {
+  color: #ffffff;
+}
+
+.next-button,
+.guess-form button,
+.form button,
+.soft-button,
+.ad-button,
+.mode-tab.active,
+.mode-button.active,
+.difficulty-button.active {
+  border-color: #ffc000;
+  background: #ffc000;
+  color: #000000;
+}
+
+.google-button {
+  border-color: #ffffff;
+  background: #ffffff;
+  color: #202020;
+}
+
+.google-button:hover:not(:disabled) {
+  border-color: #ffc000;
+  background: #ffc000;
+  color: #000000;
+}
+
+.danger-button {
+  border-color: rgba(255, 255, 255, 0.5);
+  background: transparent;
+  color: #ffffff;
+}
+
+.danger-button:hover:not(:disabled) {
+  border-color: #ffce3e;
+  background: #ffce3e;
+  color: #000000;
+}
+
+.mode-tab,
+.mode-button,
+.category-tab,
+.difficulty-button,
+.meaning-button {
+  border-radius: 0;
+  background: #000000;
+  color: #ffffff;
+}
+
+.mode-tab:hover,
+.mode-button:hover,
+.category-tab:hover,
+.difficulty-button:hover,
+.category-tab.active {
+  border-color: #ffc000;
+  background: #202020;
+  color: #ffc000;
+}
+
+.lobby-card {
+  background: #000000;
+  border-color: rgba(255, 192, 0, 0.65);
+}
+
+.lobby-card::before {
+  background: #ffc000;
+}
+
+.lobby-badges span,
+.lobby-preview span,
+.coin-balance,
+.solved-counter,
+.gift-result {
+  border-radius: 0;
+  border-color: rgba(255, 255, 255, 0.24);
+  background: #181818;
+  color: #ffc000;
+}
+
+.lobby-preview span:first-child,
+.lobby-preview span:nth-child(2),
+.lobby-preview span:nth-child(3),
+.lobby-preview span:nth-child(4) {
+  background: #181818;
+  color: #ffffff;
+}
+
+.target-box,
+.secret-box,
+.result-box,
+.puzzle-question,
+.puzzle-hint,
+.puzzle-answer-reveal,
+.who-history li,
+.letter-status,
+.wordle-tile,
+.keyboard-key,
+.guest-note,
+.currency-note,
+.clue-list li {
+  border-color: rgba(255, 255, 255, 0.2);
+  border-radius: 0;
+  background: #181818;
+  color: #ffffff;
+}
+
+.target-box span,
+.result-box span,
+.puzzle-question span,
+.puzzle-answer-reveal span,
+.secret-box span,
+.who-history h3,
+.history-panel h3 {
+  color: #ffc000;
+}
+
+.target-box strong,
+.secret-box strong,
+.result-title,
+.puzzle-question strong,
+.puzzle-answer-reveal strong {
+  color: #ffffff;
+}
+
+.result-box strong,
+.answer-reveal strong,
+.puzzle-answer-reveal.gave-up strong {
+  color: #ffc000;
+}
+
+.wordle-tile.correct {
+  border-color: #ffc000;
+  background: #ffc000;
+  color: #000000;
+}
+
+.wordle-tile.present {
+  border-color: #ffce3e;
+  background: #202020;
+  color: #ffce3e;
+}
+
+.wordle-tile.absent {
+  border-color: #494949;
+  background: #000000;
+  color: #969696;
+}
+
+.wordle-tile.hint {
+  outline: 2px solid #ffc000;
+}
+
+.ad-overlay,
+.gift-overlay {
+  background: rgba(0, 0, 0, 0.82);
+}
+
+.ad-card,
+.gift-card {
+  border: 1px solid rgba(255, 192, 0, 0.55);
+  border-radius: 0;
+  background: #202020;
+  color: #ffffff;
+}
+
+.ad-close,
+.gift-close-button {
+  border-color: #ffc000;
+  border-radius: 0;
+  background: #ffc000;
+  color: #000000;
+}
+
+.ad-image,
+.ad-image img,
+.gift-button {
+  border-radius: 0;
+}
+
+.gift-button {
+  border-color: rgba(255, 255, 255, 0.34);
+  background: #000000;
+}
+
+@media (max-width: 720px) {
+  .intro-game-names {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

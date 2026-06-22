@@ -397,8 +397,16 @@ export function WhoAmIGame({
         </p>
 
         <div className="secret-box who-secret">
-          <span>{roundFinished ? 'Секретное слово:' : 'Секретное слово'}</span>
-          <strong>{roundFinished ? targetWord : '?'.repeat(targetWord.length)}</strong>
+          {roundFinished ? (
+            <span>
+              Секретное слово: <strong>{targetWord}</strong>
+            </span>
+          ) : (
+            <>
+              <span>Секретное слово</span>
+              <strong>{'?'.repeat(targetWord.length)}</strong>
+            </>
+          )}
         </div>
 
         <form className="who-form" onSubmit={submitQuestion}>

@@ -61,6 +61,12 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
       <section className="card intro-card">
         <span className="intro-kicker">Игры в проекте</span>
         <h2>Association Wordle Puzzle Who am I?</h2>
+        <div className="intro-game-names" aria-label="Названия игр">
+          <span>Association</span>
+          <span>Wordle</span>
+          <span>Puzzle</span>
+          <span>Who am I?</span>
+        </div>
 
         <div className="intro-grid">
           <article className="intro-panel wordle-panel">
