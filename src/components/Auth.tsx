@@ -60,7 +60,7 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
     return (
       <section className="card intro-card">
         <span className="intro-kicker">Игры в проекте</span>
-        <h2>Association Wordle Puzzle Who am I?</h2>
+        <h2>WORD GAMES HUB</h2>
 
         <div className="intro-grid">
           <article className="intro-panel wordle-panel">

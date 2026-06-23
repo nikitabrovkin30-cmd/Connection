@@ -484,7 +484,7 @@ export default function App() {
     return (
       <main className="container">
         <section className="card lobby-card">
-          <h1>Association Wordle Puzzle Who am I?</h1>
+          <h1>WORD GAMES HUB</h1>
           <p className="message">{supabaseConfigError}</p>
           <p className="auth-subtitle">
             В Vercel открой Project Settings {'->'} Environment Variables и проверь переменные.
@@ -514,7 +514,7 @@ export default function App() {
         {musicEnabled ? '♫ ON' : '♫ OFF'}
       </button>
       <header className="header">
-        <h1>Association Wordle Puzzle Who am I?</h1>
+        <h1>WORD GAMES HUB</h1>
         {nickname && (
           <div className="header-actions">
           <span className="coin-balance">
