@@ -1175,33 +1175,37 @@ export function WordleGame({
           </div>
 
           <div className="wordle-actions">
-            <button
-              className="soft-button"
-              disabled={status !== 'playing' || checkingWord || guess.length === 0}
-              onClick={removeLetter}
-              type="button"
-            >
-              Стереть
-            </button>
-            <button disabled={status !== 'playing' || checkingWord} type="submit">
-              {checkingWord ? 'Проверяем...' : 'Проверить'}
-            </button>
-            <button
-              className="soft-button"
-              disabled={status !== 'playing' || hintIndex !== null || coins < hintCost || checkingWord}
-              onClick={buyHint}
-              type="button"
-            >
-              Подсказка за {hintCost} монет
-            </button>
-            <button
-              className="ad-button"
-              disabled={status !== 'playing' || hintIndex !== null || showAd || checkingWord}
-              onClick={openAdForHint}
-              type="button"
-            >
-              Смотреть рекламу за подсказку
-            </button>
+            <div className="wordle-actions-group wordle-actions-main">
+              <button
+                className="soft-button"
+                disabled={status !== 'playing' || checkingWord || guess.length === 0}
+                onClick={removeLetter}
+                type="button"
+              >
+                Стереть
+              </button>
+              <button disabled={status !== 'playing' || checkingWord} type="submit">
+                {checkingWord ? 'Проверяем...' : 'Проверить'}
+              </button>
+            </div>
+            <div className="wordle-actions-group wordle-actions-hints">
+              <button
+                className="soft-button"
+                disabled={status !== 'playing' || hintIndex !== null || coins < hintCost || checkingWord}
+                onClick={buyHint}
+                type="button"
+              >
+                Подсказка {hintCost}
+              </button>
+              <button
+                className="ad-button"
+                disabled={status !== 'playing' || hintIndex !== null || showAd || checkingWord}
+                onClick={openAdForHint}
+                type="button"
+              >
+                Реклама
+              </button>
+            </div>
           </div>
         </form>
 

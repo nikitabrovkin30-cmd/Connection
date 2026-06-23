@@ -1173,7 +1173,7 @@ button.ghost:hover {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 6px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .mode-button {
@@ -1190,8 +1190,8 @@ button.ghost:hover {
 }
 
 .daily-word-note {
-  margin: -2px 0 10px;
-  padding: 8px 10px;
+  margin: -2px 0 8px;
+  padding: 7px 9px;
   border: 1px solid #f0d8a4;
   border-radius: 8px;
   background: #fff7df;
@@ -1207,14 +1207,14 @@ button.ghost:hover {
 
 .wordle-board {
   display: grid;
-  gap: 5px;
+  gap: 4px;
   justify-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .wordle-form {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .wordle-board-button {
@@ -1259,7 +1259,7 @@ button.ghost:hover {
 .wordle-row {
   display: flex;
   justify-content: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 .wordle-tile {
@@ -1308,12 +1308,12 @@ button.ghost:hover {
 .letter-board {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(30px, 1fr));
-  gap: 4px;
-  margin-bottom: 4px;
+  gap: 3px;
+  margin-bottom: 2px;
 }
 
 .letter-key {
-  min-height: 30px;
+  min-height: 28px;
   padding: 0;
   border: 1px solid #cfd7d1;
   background: #fff;
@@ -1351,8 +1351,21 @@ button.ghost:hover {
 
 .wordle-actions {
   display: grid;
-  grid-template-columns: 1fr 1.2fr 1.4fr;
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 6px;
+}
+
+.wordle-actions-group {
+  display: contents;
+}
+
+.wordle-actions-group button {
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 6px;
+  font-size: 12px;
+  line-height: 1.05;
 }
 
 .ad-button {
@@ -1824,7 +1837,18 @@ button.ghost:hover {
   }
 
   .wordle-actions {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .wordle-actions-group {
+    display: contents;
+  }
+
+  .wordle-actions-group button {
+    min-height: 32px;
+    padding: 6px 4px;
+    font-size: 10px;
   }
 
   .puzzle-actions {
