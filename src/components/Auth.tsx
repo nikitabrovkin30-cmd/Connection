@@ -7,8 +7,72 @@ type AuthProps = {
   onStart: (email: string, password: string) => Promise<string>;
 };
 
+type GamePreviewKind = 'wordle' | 'association' | 'puzzle' | 'who';
+
+const INTRO_GAMES: readonly { title: string; kind: GamePreviewKind }[] = [
+  { title: 'Wordle', kind: 'wordle' },
+  { title: 'Association', kind: 'association' },
+  { title: 'Puzzle', kind: 'puzzle' },
+  { title: 'Who am I?', kind: 'who' },
+];
+
 function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
+}
+
+function GameModePicture({ kind, title }: { kind: GamePreviewKind; title: string }) {
+  if (kind === 'wordle') {
+    return (
+      <div className="mode-picture wordle-picture" aria-label={title}>
+        <div className="wordle-mini-row">
+          <span className="tile-green">С</span>
+          <span className="tile-gold">Л</span>
+          <span className="tile-gray">О</span>
+          <span className="tile-green">В</span>
+          <span className="tile-gray">О</span>
+        </div>
+        <div className="wordle-keyboard-mini">
+          <span />
+          <span />
+          <span />
+          <span />
+          <span />
+          <span />
+        </div>
+      </div>
+    );
+  }
+
+  if (kind === 'association') {
+    return (
+      <div className="mode-picture association-picture" aria-label={title}>
+        <span className="assoc-center">?</span>
+        <span className="assoc-node assoc-node-top">звезда</span>
+        <span className="assoc-node assoc-node-right">небо</span>
+        <span className="assoc-node assoc-node-bottom">планета</span>
+        <span className="assoc-node assoc-node-left">ночь</span>
+      </div>
+    );
+  }
+
+  if (kind === 'puzzle') {
+    return (
+      <div className="mode-picture puzzle-picture" aria-label={title}>
+        <span className="puzzle-piece piece-one">?</span>
+        <span className="puzzle-piece piece-two">!</span>
+        <span className="puzzle-piece piece-three">✓</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mode-picture who-picture" aria-label={title}>
+      <span className="secret-card">Кто я?</span>
+      <span className="answer-chip yes-chip">Да</span>
+      <span className="answer-chip no-chip">Нет</span>
+      <span className="question-mark">?</span>
+    </div>
+  );
 }
 
 export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
@@ -63,56 +127,12 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
         <h2>WORD GAMES HUB</h2>
 
         <div className="intro-grid">
-          <article className="intro-panel wordle-panel">
-            <h3>Wordle</h3>
-            <p>
-              Wordle - это игра, где нужно угадать слово за 6 попыток. После каждой попытки
-              буквы меняют цвет.
-            </p>
-            <ul>
-              <li><strong>Зеленый:</strong> буква стоит на своем месте.</li>
-              <li><strong>Желтый:</strong> буква есть в слове, но в другом месте.</li>
-              <li><strong>Серый:</strong> такой буквы в слове нет.</li>
-            </ul>
-          </article>
-
-          <article className="intro-panel association-panel">
-            <h3>Association</h3>
-            <p>
-              Association - это режим про смысл и ассоциации. Нужно найти загаданное слово,
-              пробуя близкие по теме варианты.
-            </p>
-            <ul>
-              <li>Пиши любое слово или ответ.</li>
-              <li>Меньшее число значит, что ассоциация ближе.</li>
-              <li>Подсказки помогают понять тему слова.</li>
-            </ul>
-          </article>
-
-          <article className="intro-panel puzzle-panel">
-            <h3>Puzzle</h3>
-            <p>
-              Puzzle - режим с загадками. Нужно понять описание, написать ответ одним словом и получить монеты за правильную разгадку.
-            </p>
-            <ul>
-              <li>Есть три сложности: легко, средне и сложно.</li>
-              <li>Загадки бывают про предметы, природу, идеи и скрытый смысл.</li>
-              <li>Чем сложнее режим, тем больше нужно думать над формулировкой.</li>
-            </ul>
-          </article>
-
-          <article className="intro-panel who-panel">
-            <h3>Who am I?</h3>
-            <p>
-              Who am I? - это игра, где нужно угадать секретное слово через вопросы. Игра отвечает только
-              “да” или “нет”, а ты постепенно сужаешь варианты.
-            </p>
-            <ul>
-              <li>Задавай вопросы вроде: “это живое?”, “это можно есть?”, “это предмет?”.</li>
-              <li>Когда появилась догадка, напиши ответ в поле ниже.</li>
-              <li>Если застрял, можно открыть подсказку за монеты или рекламу.</li>
-            </ul>
-          </article>
+          {INTRO_GAMES.map((game) => (
+            <article className={`intro-panel ${game.kind}-panel`} key={game.kind}>
+              <h3>{game.title}</h3>
+              <GameModePicture kind={game.kind} title={game.title} />
+            </article>
+          ))}
         </div>
 
         <button className="next-button" onClick={() => setShowIntro(false)} type="button">

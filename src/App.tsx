@@ -5,6 +5,7 @@ import { PuzzleGame } from './components/PuzzleGame';
 import { WhoAmIGame } from './components/WhoAmIGame';
 import { WordleGame } from './components/WordleGame';
 import chestImage from './assets/chest.svg';
+import backgroundMusicSrc from './music/ludovico-einaudi.mp3';
 import { ASSOCIATION_CATEGORIES } from './data/wordBank';
 import type { AssociationCategoryId } from './data/wordBank';
 import { supabase, supabaseConfigError } from './lib/supabase';
@@ -20,7 +21,7 @@ const LOCAL_GUEST_SOLVED_KEY = 'association_guest_solved_words';
 const LOCAL_GAME_MODE_KEY = 'association_game_mode';
 const LOCAL_ASSOCIATION_CATEGORY_KEY = 'association_category';
 const LOCAL_MUSIC_ENABLED_KEY = 'association_music_enabled';
-const BACKGROUND_MUSIC_SRC = '/music/ludovico-einaudi.mp3';
+const BACKGROUND_MUSIC_SRC = backgroundMusicSrc;
 const PRODUCTION_APP_URL = 'https://connection-cyan.vercel.app';
 const ASSOCIATION_CATEGORY_STICKERS: Record<AssociationCategoryId, string> = {
   all: '🎲',
@@ -170,7 +171,7 @@ export default function App() {
     music.volume = 0.35;
     music.muted = false;
     void music.play().catch((error: unknown) => {
-      console.warn('Music did not start. Add the file public/music/ludovico-einaudi.mp3 or press the button again.', error);
+      console.warn('Music did not start. Press the music button again.', error);
     });
   }, [musicEnabled]);
 
