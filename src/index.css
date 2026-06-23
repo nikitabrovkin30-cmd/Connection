@@ -197,6 +197,8 @@ body {
 
 .intro-card {
   max-width: 1040px;
+  text-align: center;
+  justify-items: center;
 }
 
 .intro-kicker {
@@ -217,17 +219,32 @@ body {
 .intro-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  justify-content: center;
+  width: 100%;
   gap: 12px;
 }
 
 .intro-panel {
   display: grid;
-  align-content: start;
-  gap: 12px;
-  min-height: 230px;
+  align-content: stretch;
+  justify-items: center;
+  min-height: 190px;
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
+}
+
+.intro-panel-button {
+  width: 100%;
+  min-height: 190px;
+  cursor: pointer;
+  text-align: inherit;
+}
+
+.intro-panel-button:hover,
+.intro-panel-button:focus-visible {
+  border-color: #ffc000;
+  transform: translateY(-2px);
 }
 
 .intro-panel h3 {
@@ -263,7 +280,8 @@ body {
 .mode-picture {
   position: relative;
   display: grid;
-  min-height: 150px;
+  width: 100%;
+  min-height: 100%;
   overflow: hidden;
   border: 1px solid rgba(255, 192, 0, 0.35);
   background: #070707;
@@ -1640,7 +1658,8 @@ button.ghost:hover {
   }
 
   .intro-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, min(100%, 360px));
+    justify-content: center;
   }
 
   .mode-tabs {
@@ -1681,6 +1700,7 @@ button.ghost:hover {
 
   .intro-panel {
     min-height: 0;
+    width: 100%;
     gap: 6px;
     padding: 12px;
   }
@@ -1811,7 +1831,8 @@ button.ghost:hover {
   }
 
   .intro-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(240px, 360px));
+    justify-content: center;
   }
 
   .lobby-preview {

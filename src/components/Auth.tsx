@@ -124,14 +124,18 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
     return (
       <section className="card intro-card">
         <span className="intro-kicker">Игры в проекте</span>
-        <h2>WORD GAMES HUB</h2>
 
         <div className="intro-grid">
           {INTRO_GAMES.map((game) => (
-            <article className={`intro-panel ${game.kind}-panel`} key={game.kind}>
-              <h3>{game.title}</h3>
+            <button
+              aria-label={`Открыть регистрацию: ${game.title}`}
+              className={`intro-panel intro-panel-button ${game.kind}-panel`}
+              key={game.kind}
+              onClick={() => setShowIntro(false)}
+              type="button"
+            >
               <GameModePicture kind={game.kind} title={game.title} />
-            </article>
+            </button>
           ))}
         </div>
 
