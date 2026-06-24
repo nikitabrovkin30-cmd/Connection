@@ -79,6 +79,8 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
+  const [reviewText, setReviewText] = useState('');
+  const [showReviewForm, setShowReviewForm] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
   const [busy, setBusy] = useState(false);
 
@@ -118,6 +120,29 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
     setMessage('');
     await onGoogleStart();
     setBusy(false);
+  }
+
+  function handleReviewSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+
+    const nextReview = reviewText.trim();
+    if (nextReview.length < 3) {
+      setMessage('Напиши отзыв чуть подробнее.');
+      return;
+    }
+
+    const body = [
+      'Отзыв о WORD GAMES HUB:',
+      '',
+      nextReview,
+      '',
+      email.trim() ? `Почта игрока: ${email.trim()}` : '',
+    ].filter(Boolean).join('\n');
+
+    window.location.href = `mailto:?subject=${encodeURIComponent('Отзыв WORD GAMES HUB')}&body=${encodeURIComponent(body)}`;
+    setMessage('Спасибо! Отзыв открылся в почте.');
+    setReviewText('');
+    setShowReviewForm(false);
   }
 
   if (showIntro) {
@@ -201,6 +226,36 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
       <button className="google-button" disabled={busy} onClick={handleGoogleStart} type="button">
         Войти через Google
       </button>
+
+      <button
+        className="review-button"
+        disabled={busy}
+        onClick={() => {
+          setShowReviewForm((current) => !current);
+          setMessage('');
+        }}
+        type="button"
+      >
+        Добавить отзыв
+      </button>
+
+      {showReviewForm && (
+        <form className="review-form" onSubmit={handleReviewSubmit}>
+          <textarea
+            disabled={busy}
+            onChange={(e) => {
+              setReviewText(e.target.value);
+              setMessage('');
+            }}
+            placeholder="Напиши отзыв..."
+            rows={4}
+            value={reviewText}
+          />
+          <button disabled={busy} type="submit">
+            Отправить отзыв
+          </button>
+        </form>
+      )}
 
       {message && <p className="message">{message}</p>}
     </section>
