@@ -189,6 +189,36 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
         <span>Who am I?</span>
       </div>
 
+      <button
+        className="review-button"
+        disabled={busy}
+        onClick={() => {
+          setShowReviewForm((current) => !current);
+          setMessage('');
+        }}
+        type="button"
+      >
+        Добавить отзыв
+      </button>
+
+      {showReviewForm && (
+        <form className="review-form" onSubmit={handleReviewSubmit}>
+          <textarea
+            disabled={busy}
+            onChange={(e) => {
+              setReviewText(e.target.value);
+              setMessage('');
+            }}
+            placeholder="Напиши отзыв..."
+            rows={4}
+            value={reviewText}
+          />
+          <button disabled={busy} type="submit">
+            Отправить отзыв
+          </button>
+        </form>
+      )}
+
       <form onSubmit={handleSubmit} className="form">
         <input
           type="email"
@@ -226,36 +256,6 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
       <button className="google-button" disabled={busy} onClick={handleGoogleStart} type="button">
         Войти через Google
       </button>
-
-      <button
-        className="review-button"
-        disabled={busy}
-        onClick={() => {
-          setShowReviewForm((current) => !current);
-          setMessage('');
-        }}
-        type="button"
-      >
-        Добавить отзыв
-      </button>
-
-      {showReviewForm && (
-        <form className="review-form" onSubmit={handleReviewSubmit}>
-          <textarea
-            disabled={busy}
-            onChange={(e) => {
-              setReviewText(e.target.value);
-              setMessage('');
-            }}
-            placeholder="Напиши отзыв..."
-            rows={4}
-            value={reviewText}
-          />
-          <button disabled={busy} type="submit">
-            Отправить отзыв
-          </button>
-        </form>
-      )}
 
       {message && <p className="message">{message}</p>}
     </section>
