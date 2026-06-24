@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { supabase } from '../lib/supabase';
 
 type AuthProps = {
   onGuestStart: () => Promise<void>;
@@ -80,8 +79,6 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
-  const [reviewText, setReviewText] = useState('');
-  const [showReviewForm, setShowReviewForm] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
   const [busy, setBusy] = useState(false);
 
@@ -121,37 +118,6 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
     setMessage('');
     await onGoogleStart();
     setBusy(false);
-  }
-
-  async function handleReviewSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-
-    const nextReview = reviewText.trim();
-    if (nextReview.length < 3) {
-      setMessage('Напиши отзыв чуть подробнее.');
-      return;
-    }
-
-    setBusy(true);
-    const { data: userData } = await supabase.auth.getUser();
-    const currentUser = userData.user;
-    const { error } = await supabase.from('reviews').insert({
-      author_email: email.trim() || currentUser?.email || null,
-      body: nextReview,
-      user_id: currentUser?.id ?? null,
-    });
-    setBusy(false);
-
-    if (error) {
-      setMessage(error.message.includes('reviews')
-        ? 'Отзывы еще не включены в Supabase. Нужно запустить npm run db:push.'
-        : `Не получилось отправить отзыв: ${error.message}`);
-      return;
-    }
-
-    setMessage('Спасибо! Отзыв отправлен.');
-    setReviewText('');
-    setShowReviewForm(false);
   }
 
   if (showIntro) {
@@ -197,36 +163,6 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
         <span>Puzzle</span>
         <span>Who am I?</span>
       </div>
-
-      <button
-        className="review-button"
-        disabled={busy}
-        onClick={() => {
-          setShowReviewForm((current) => !current);
-          setMessage('');
-        }}
-        type="button"
-      >
-        Добавить отзыв
-      </button>
-
-      {showReviewForm && (
-        <form className="review-form" onSubmit={handleReviewSubmit}>
-          <textarea
-            disabled={busy}
-            onChange={(e) => {
-              setReviewText(e.target.value);
-              setMessage('');
-            }}
-            placeholder="Напиши отзыв..."
-            rows={4}
-            value={reviewText}
-          />
-          <button disabled={busy} type="submit">
-            Отправить отзыв
-          </button>
-        </form>
-      )}
 
       <form onSubmit={handleSubmit} className="form">
         <input

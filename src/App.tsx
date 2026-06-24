@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { FormEvent } from 'react';
 import { Auth } from './components/Auth';
 import { ConnectionGame } from './components/ConnectionGame';
 import { PuzzleGame } from './components/PuzzleGame';
@@ -113,6 +114,10 @@ export default function App() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewsOpen, setReviewsOpen] = useState(false);
   const [reviewsError, setReviewsError] = useState('');
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewText, setReviewText] = useState('');
+  const [reviewMessage, setReviewMessage] = useState('');
+  const [reviewBusy, setReviewBusy] = useState(false);
   const musicRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -326,6 +331,42 @@ export default function App() {
     setReviews((data as Review[] | null) ?? []);
   }
 
+  async function submitReview(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+
+    const nextReview = reviewText.trim();
+    if (nextReview.length < 3) {
+      setReviewMessage('Напиши отзыв чуть подробнее.');
+      return;
+    }
+
+    setReviewBusy(true);
+    setReviewMessage('');
+
+    const { error } = await supabase.from('reviews').insert({
+      author_email: nickname,
+      body: nextReview,
+      user_id: userId || null,
+    });
+
+    setReviewBusy(false);
+
+    if (error) {
+      setReviewMessage(error.message.includes('reviews')
+        ? 'Отзывы еще не включены в Supabase. Нужно запустить npm run db:push.'
+        : `Не получилось отправить отзыв: ${error.message}`);
+      return;
+    }
+
+    setReviewText('');
+    setShowReviewForm(false);
+    setReviewMessage('Спасибо! Отзыв отправлен.');
+
+    if (isAdmin && reviewsOpen) {
+      void loadReviews();
+    }
+  }
+
   async function ensureProfile(nextUserId: string, nextNickname: string) {
     const existingProfile = await loadProfile(nextUserId);
 
@@ -454,6 +495,10 @@ export default function App() {
     setReviews([]);
     setReviewsOpen(false);
     setReviewsError('');
+    setShowReviewForm(false);
+    setReviewText('');
+    setReviewMessage('');
+    setReviewBusy(false);
     setAuthScreenKey((currentKey) => currentKey + 1);
   }
 
@@ -612,35 +657,71 @@ export default function App() {
             </button>
           </div>
 
-          {isAdmin && (
-            <section className="admin-panel">
+          <section className="feedback-panel">
+            <div className="feedback-actions">
               <button
-                className="admin-toggle"
+                className="review-button"
+                disabled={reviewBusy}
                 onClick={() => {
-                  const nextOpen = !reviewsOpen;
-                  setReviewsOpen(nextOpen);
-                  if (nextOpen) {
-                    void loadReviews();
-                  }
+                  setShowReviewForm((current) => !current);
+                  setReviewMessage('');
                 }}
                 type="button"
               >
-                {reviewsOpen ? 'Скрыть отзывы' : 'Читать отзывы'}
+                Добавить отзыв
               </button>
 
-              {reviewsOpen && (
-                <div className="reviews-list">
-                  {reviewsError && <p className="message">{reviewsError}</p>}
-                  {!reviewsError && reviews.length === 0 && <p>Отзывов пока нет.</p>}
-                  {reviews.map((review) => (
-                    <article className="review-item" key={review.id}>
-                      <strong>{review.author_email || 'Без почты'}</strong>
-                      <span>{new Date(review.created_at).toLocaleString('ru-RU')}</span>
-                      <p>{review.body}</p>
-                    </article>
-                  ))}
-                </div>
+              {isAdmin && (
+                <button
+                  className="admin-toggle"
+                  onClick={() => {
+                    const nextOpen = !reviewsOpen;
+                    setReviewsOpen(nextOpen);
+                    if (nextOpen) {
+                      void loadReviews();
+                    }
+                  }}
+                  type="button"
+                >
+                  {reviewsOpen ? 'Скрыть отзывы' : 'Читать отзывы'}
+                </button>
               )}
+            </div>
+
+            {showReviewForm && (
+              <form className="review-form" onSubmit={submitReview}>
+                <textarea
+                  disabled={reviewBusy}
+                  onChange={(e) => {
+                    setReviewText(e.target.value);
+                    setReviewMessage('');
+                  }}
+                  placeholder="Напиши отзыв..."
+                  rows={4}
+                  value={reviewText}
+                />
+                <button disabled={reviewBusy} type="submit">
+                  {reviewBusy ? 'Отправляем...' : 'Отправить отзыв'}
+                </button>
+              </form>
+            )}
+
+            {reviewMessage && <p className="message">{reviewMessage}</p>}
+          </section>
+
+          {isAdmin && reviewsOpen && (
+            <section className="admin-panel">
+              <div className="reviews-list">
+                {reviewsError && <p className="message">{reviewsError}</p>}
+                {!reviewsError && reviews.length === 0 && <p>Отзывов пока нет.</p>}
+                {reviews.map((review) => (
+                  <article className="review-item" key={review.id}>
+                    <strong>{review.author_email || 'Без почты'}</strong>
+                    <span>{new Date(review.created_at).toLocaleString('ru-RU')}</span>
+                    <p>{review.body}</p>
+                  </article>
+                ))}
+              </div>
             </section>
           )}
 
