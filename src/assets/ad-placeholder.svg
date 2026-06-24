@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1536 1024" role="img" aria-label="Реклама">
+  <rect width="1536" height="1024" fill="#000000"/>
+  <text
+    x="768"
+    y="535"
+    fill="#ffffff"
+    font-family="Arial Black, Impact, Arial, sans-serif"
+    font-size="150"
+    font-weight="900"
+    text-anchor="middle"
+    dominant-baseline="middle"
+  >РЕКЛАМА</text>
+</svg>

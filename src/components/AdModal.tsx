@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import adPhoto from '../assets/5301289502691236295.jpg';
+import adPhoto from '../assets/ad-placeholder.svg';
 
 type AdModalProps = {
   onClose: () => void;
