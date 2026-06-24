@@ -39,6 +39,14 @@ type PlayerProfile = {
   nickname: string;
   coins: number;
   solved_words: number;
+  is_admin: boolean;
+};
+
+type Review = {
+  id: string;
+  author_email: string | null;
+  body: string;
+  created_at: string;
 };
 
 function isMissingSessionError(message: string) {
@@ -101,6 +109,10 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [isGuest, setIsGuest] = useState(false);
   const [musicEnabled, setMusicEnabled] = useState(() => loadSavedMusicEnabled());
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewsOpen, setReviewsOpen] = useState(false);
+  const [reviewsError, setReviewsError] = useState('');
   const musicRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -262,13 +274,14 @@ export default function App() {
     setNickname(profile.nickname);
     setCoins(profile.coins);
     setSolvedWords(profile.solved_words);
+    setIsAdmin(profile.is_admin);
     setIsGuest(false);
   }
 
   async function loadProfile(nextUserId: string) {
     const { data, error } = await supabase
       .from('player_profiles')
-      .select('user_id, nickname, coins, solved_words')
+      .select('user_id, nickname, coins, solved_words, is_admin')
       .eq('user_id', nextUserId)
       .maybeSingle();
 
@@ -293,6 +306,26 @@ export default function App() {
     }
   }
 
+  async function loadReviews() {
+    if (!isAdmin) return;
+
+    setReviewsError('');
+    const { data, error } = await supabase
+      .from('reviews')
+      .select('id, author_email, body, created_at')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      setReviewsError(error.message.includes('reviews')
+        ? 'Отзывы еще не включены в Supabase. Нужно запустить npm run db:push.'
+        : error.message);
+      return;
+    }
+
+    setReviews((data as Review[] | null) ?? []);
+  }
+
   async function ensureProfile(nextUserId: string, nextNickname: string) {
     const existingProfile = await loadProfile(nextUserId);
 
@@ -306,6 +339,7 @@ export default function App() {
       nickname: nextNickname,
       coins: REGISTRATION_BONUS_COINS,
       solved_words: 0,
+      is_admin: nextNickname.trim().toLowerCase() === 'nikita brovkin',
     };
     const { error } = await supabase.from('player_profiles').insert(newProfile);
 
@@ -416,6 +450,10 @@ export default function App() {
     setLastGiftCoins(null);
     setMode('connection');
     setIsGuest(false);
+    setIsAdmin(false);
+    setReviews([]);
+    setReviewsOpen(false);
+    setReviewsError('');
     setAuthScreenKey((currentKey) => currentKey + 1);
   }
 
@@ -573,6 +611,38 @@ export default function App() {
               Who am I?
             </button>
           </div>
+
+          {isAdmin && (
+            <section className="admin-panel">
+              <button
+                className="admin-toggle"
+                onClick={() => {
+                  const nextOpen = !reviewsOpen;
+                  setReviewsOpen(nextOpen);
+                  if (nextOpen) {
+                    void loadReviews();
+                  }
+                }}
+                type="button"
+              >
+                {reviewsOpen ? 'Скрыть отзывы' : 'Читать отзывы'}
+              </button>
+
+              {reviewsOpen && (
+                <div className="reviews-list">
+                  {reviewsError && <p className="message">{reviewsError}</p>}
+                  {!reviewsError && reviews.length === 0 && <p>Отзывов пока нет.</p>}
+                  {reviews.map((review) => (
+                    <article className="review-item" key={review.id}>
+                      <strong>{review.author_email || 'Без почты'}</strong>
+                      <span>{new Date(review.created_at).toLocaleString('ru-RU')}</span>
+                      <p>{review.body}</p>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
 
           {mode === 'connection' && (
             <div className="category-tabs" aria-label="Категория слов">

@@ -183,6 +183,52 @@ body {
   text-align: center;
 }
 
+.admin-panel {
+  margin-bottom: 10px;
+  border: 1px solid rgba(255, 192, 0, 0.55);
+  background: #000;
+}
+
+.admin-toggle {
+  width: 100%;
+  border-color: #ffc000;
+  background: #ffc000;
+  color: #000;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.reviews-list {
+  display: grid;
+  gap: 8px;
+  max-height: 260px;
+  overflow: auto;
+  padding: 10px;
+}
+
+.review-item {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: #181818;
+  color: #fff;
+}
+
+.review-item strong {
+  color: #ffc000;
+}
+
+.review-item span {
+  color: #969696;
+  font-size: 12px;
+}
+
+.review-item p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .card,
 .game-card,
 .history-panel {
