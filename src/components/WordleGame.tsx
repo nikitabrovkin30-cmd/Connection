@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { AdModal } from './AdModal';
 
 type WordLength = 4 | 5 | 6;
+type WordleLanguage = 'ru' | 'kk';
 type WordleMode = 'classic' | 'daily' | 'campaign';
 type TileStatus = 'correct' | 'present' | 'absent';
 type LetterStatus = TileStatus | 'unused';
@@ -17,6 +18,7 @@ type GuessRow = {
 };
 
 type SavedWordleState = {
+  language?: WordleLanguage;
   wordLength: WordLength;
   targetWord: string;
   guess: string;
@@ -49,9 +51,15 @@ const MAX_ATTEMPTS = 6;
 const CAMPAIGN_LEVEL_COUNT = 2000;
 const WORDLE_STATE_PREFIX = 'wordle_game_state';
 const WORDLE_MODE_PREFIX = 'wordle_game_mode';
+const WORDLE_LANGUAGE_PREFIX = 'wordle_game_language';
 const WORDLE_VALIDATION_CACHE_PREFIX = 'wordle_ai_validation';
 const WORDLE_LOCAL_LEARNED_WORDS_KEY = 'wordle_local_learned_words';
 const RUSSIAN_ALPHABET = Array.from('абвгдежзийклмнопрстуфхцчшщъыьэюя');
+const KAZAKH_ALPHABET = Array.from('аәбвгғдеёжзийкқлмнңоөпрстуұүфхһцчшщъыіьэюя');
+const WORDLE_LANGUAGES: readonly { id: WordleLanguage; title: string }[] = [
+  { id: 'ru', title: 'Русский' },
+  { id: 'kk', title: 'Қазақша' },
+];
 
 const WORDS: Record<WordLength, string[]> = {
   4: [
@@ -110,12 +118,136 @@ const WORDS: Record<WordLength, string[]> = {
   ],
 };
 
+const KAZAKH_WORDS: Record<WordLength, string[]> = {
+  4: [
+    'алма', 'қала', 'дала', 'бала', 'ағаш', 'қоян', 'суық', 'жылы', 'орын', 'төрт',
+    'етік', 'киім', 'ойын', 'әнші', 'отын', 'жазу', 'айна', 'қора', 'кеме', 'қара',
+    'ақша', 'асық', 'құрт', 'жоба', 'тана', 'қазы', 'сана', 'түбі', 'шана', 'мата',
+    'жеке', 'сары', 'көне', 'бөрі', 'ерік', 'үміт', 'күші', 'көзі', 'қолы', 'аяғы',
+    'жүзі', 'қапа', 'құмы', 'жары', 'тұқы', 'қыры', 'тасы', 'жолы', 'үйір', 'әнім',
+  ],
+  5: [
+    'кітап', 'ұстаз', 'сабақ', 'қалам', 'жүрек', 'балық', 'теңіз', 'аспан', 'орман', 'түлкі',
+    'мысық', 'жылқы', 'қымыз', 'бауыр', 'қасық', 'жалау', 'сағат', 'кілем', 'сөмке', 'көрпе',
+    'кесеу', 'құдық', 'тарақ', 'құрал', 'жолақ', 'қабат', 'жазық', 'қатты', 'жұмыр', 'қоңыр',
+    'шағын', 'жасыл', 'қызыл', 'құрақ', 'білім', 'арман', 'еңбек', 'дәуір', 'қазақ', 'ұлтты',
+    'далақ', 'қамал', 'самал', 'бұлақ', 'қайық', 'көмір', 'құмыр', 'сұрақ', 'жауап', 'талап',
+    'мерей', 'шабыт', 'намыс', 'қамыс', 'құнды', 'мұрат', 'сәуле', 'қайың', 'жусан', 'тұмар',
+  ],
+  6: [
+    'мектеп', 'дәптер', 'жаңбыр', 'қасқыр', 'терезе', 'ұлттық', 'қазақы', 'жұлдыз', 'көйлек', 'көктем',
+    'жазушы', 'саяхат', 'қантты', 'қалауы', 'дәстүр', 'мәдени', 'таңдау', 'құмған', 'жүрген', 'көркем',
+    'жарқын', 'шалқар', 'ақиқат', 'тұлпар', 'күмбез', 'бүркіт', 'жомарт', 'қайрат', 'дәулет', 'ырысты',
+    'сәулет', 'құндыз', 'қорған', 'қақпақ', 'шағала', 'табиғи', 'балғын', 'ақылды', 'береке', 'бірлік',
+    'қасиет', 'отбасы', 'жастар', 'далада', 'сұлтан', 'қамқор', 'қазына', 'қаламы', 'тірлік', 'көкпар',
+  ],
+};
+
+const KAZAKH_CAMPAIGN_TARGET_COUNTS: Record<WordLength, number> = {
+  4: 600,
+  5: 700,
+  6: 800,
+};
+
+const KAZAKH_SYLLABLES = [
+  'ба', 'бе', 'бі', 'бо', 'бө', 'бұ', 'бү',
+  'ға', 'ге', 'гі', 'ғо', 'ғұ',
+  'да', 'де', 'ді', 'до', 'дө', 'ды',
+  'жа', 'же', 'жі', 'жо', 'жө', 'жу',
+  'за', 'зе', 'зі', 'зо', 'зу',
+  'қа', 'ке', 'кі', 'қо', 'кө', 'қу', 'кү',
+  'ла', 'ле', 'лі', 'ло', 'лу',
+  'ма', 'ме', 'мі', 'мо', 'мұ', 'мү',
+  'на', 'не', 'ні', 'но', 'ну',
+  'са', 'се', 'сі', 'со', 'су',
+  'та', 'те', 'ті', 'то', 'ту',
+  'ша', 'ше', 'ші', 'шо', 'шу',
+  'ра', 'ре', 'рі', 'ро', 'ру',
+];
+
+const KAZAKH_SINGLE_ENDINGS = ['н', 'р', 'с', 'т', 'қ', 'к', 'м', 'л', 'й', 'з', 'ш'];
+const KAZAKH_CASE_ENDINGS = ['ға', 'ге', 'қа', 'ке', 'да', 'де', 'та', 'те', 'ды', 'ді', 'ты', 'ті', 'мен', 'сыз'];
+
+function isKazakhCandidateWord(word: string, length: WordLength) {
+  if (word.length !== length || !getLanguagePattern('kk').test(word)) return false;
+  if (new Set(word).size < 3) return false;
+
+  const vowels = word.match(/[аәеёиоөұүыіэюя]/g)?.length ?? 0;
+  return vowels > 0;
+}
+
+function addKazakhCandidate(words: Set<string>, word: string, length: WordLength) {
+  const normalizedWord = normalizeDictionaryWord(word, 'kk');
+  if (isKazakhCandidateWord(normalizedWord, length)) {
+    words.add(normalizedWord);
+  }
+}
+
+function fillKazakhWords(words: Set<string>, length: WordLength, targetCount: number) {
+  KAZAKH_WORDS[length].forEach((word) => addKazakhCandidate(words, word, length));
+
+  for (const baseWords of Object.values(KAZAKH_WORDS)) {
+    for (const word of baseWords) {
+      for (const ending of KAZAKH_CASE_ENDINGS) {
+        addKazakhCandidate(words, `${word}${ending}`, length);
+        if (words.size >= targetCount) return words;
+      }
+    }
+  }
+
+  for (const first of KAZAKH_SYLLABLES) {
+    for (const second of KAZAKH_SYLLABLES) {
+      if (length === 4) {
+        addKazakhCandidate(words, `${first}${second}`, length);
+      }
+
+      if (length === 5) {
+        for (const ending of KAZAKH_SINGLE_ENDINGS) {
+          addKazakhCandidate(words, `${first}${second}${ending}`, length);
+          if (words.size >= targetCount) return words;
+        }
+      }
+
+      if (length === 6) {
+        for (const third of KAZAKH_SYLLABLES) {
+          addKazakhCandidate(words, `${first}${second}${third}`, length);
+          if (words.size >= targetCount) return words;
+        }
+      }
+
+      if (words.size >= targetCount) return words;
+    }
+  }
+
+  return words;
+}
+
+function createKazakhTargetWords() {
+  return {
+    4: fillKazakhWords(new Set(KAZAKH_WORDS[4]), 4, KAZAKH_CAMPAIGN_TARGET_COUNTS[4]),
+    5: fillKazakhWords(new Set(KAZAKH_WORDS[5]), 5, KAZAKH_CAMPAIGN_TARGET_COUNTS[5]),
+    6: fillKazakhWords(new Set(KAZAKH_WORDS[6]), 6, KAZAKH_CAMPAIGN_TARGET_COUNTS[6]),
+  } satisfies Record<WordLength, Set<string>>;
+}
+
 const wordValidationCache = new Map<string, boolean>();
 
 const WORDLE_TARGET_WORDS: Record<WordLength, Set<string>> = {
   4: new Set([...WORDS[4], ...SECRET_WORDS.filter((word) => word.length === 4)]),
   5: new Set([...WORDS[5], ...SECRET_WORDS.filter((word) => word.length === 5)]),
   6: new Set([...WORDS[6], ...SECRET_WORDS.filter((word) => word.length === 6)]),
+};
+
+const KAZAKH_TARGET_WORDS = createKazakhTargetWords();
+
+const WORDLE_TARGET_WORDS_BY_LANGUAGE: Record<WordleLanguage, Record<WordLength, Set<string>>> = {
+  ru: WORDLE_TARGET_WORDS,
+  kk: KAZAKH_TARGET_WORDS,
+};
+
+const WORDLE_SOURCE_WORDS_BY_LANGUAGE: Record<WordleLanguage, Record<WordLength, string[]>> = {
+  ru: WORDS,
+  kk: KAZAKH_WORDS,
 };
 
 const RARE_LETTERS = new Set(Array.from('фхцчшщъыэюяь'));
@@ -129,17 +261,32 @@ function getWordDifficulty(word: string) {
   return letters.length * 100 + rareScore + uniqueScore + repeatPenalty;
 }
 
-function getSortedTargetWords(length: WordLength) {
-  return Array.from(WORDLE_TARGET_WORDS[length]).sort((firstWord, secondWord) => (
+function getTargetWords(language: WordleLanguage, length: WordLength) {
+  return WORDLE_TARGET_WORDS_BY_LANGUAGE[language][length];
+}
+
+function getAllowedWords(language: WordleLanguage, length: WordLength) {
+  return WORDLE_ALLOWED_WORDS_BY_LANGUAGE[language][length];
+}
+
+function getSortedTargetWords(language: WordleLanguage, length: WordLength) {
+  return Array.from(getTargetWords(language, length)).sort((firstWord, secondWord) => (
     getWordDifficulty(firstWord) - getWordDifficulty(secondWord) ||
-    firstWord.localeCompare(secondWord, 'ru')
+    firstWord.localeCompare(secondWord, language === 'kk' ? 'kk' : 'ru')
   ));
 }
 
-const CAMPAIGN_WORDS_BY_LENGTH: Record<WordLength, string[]> = {
-  4: getSortedTargetWords(4),
-  5: getSortedTargetWords(5),
-  6: getSortedTargetWords(6),
+const CAMPAIGN_WORDS_BY_LANGUAGE: Record<WordleLanguage, Record<WordLength, string[]>> = {
+  ru: {
+    4: getSortedTargetWords('ru', 4),
+    5: getSortedTargetWords('ru', 5),
+    6: getSortedTargetWords('ru', 6),
+  },
+  kk: {
+    4: getSortedTargetWords('kk', 4),
+    5: getSortedTargetWords('kk', 5),
+    6: getSortedTargetWords('kk', 6),
+  },
 };
 
 function getCampaignWordLength(level: number): WordLength {
@@ -149,10 +296,10 @@ function getCampaignWordLength(level: number): WordLength {
   return level % 5 === 0 ? 5 : 6;
 }
 
-function getCampaignWord(level: number) {
+function getCampaignWord(level: number, language: WordleLanguage) {
   const safeLevel = Math.max(1, Math.min(CAMPAIGN_LEVEL_COUNT, level));
   const length = getCampaignWordLength(safeLevel);
-  const words = CAMPAIGN_WORDS_BY_LENGTH[length];
+  const words = CAMPAIGN_WORDS_BY_LANGUAGE[language][length];
   const progress = (safeLevel - 1) / (CAMPAIGN_LEVEL_COUNT - 1);
   const baseIndex = Math.floor(progress * Math.max(0, words.length - 1));
   const randomOffset = (safeLevel * 17 + length * 31) % Math.max(1, Math.min(9, words.length));
@@ -160,16 +307,25 @@ function getCampaignWord(level: number) {
 
   return {
     length,
-    word: words[index] ?? pickWord(length),
+    word: words[index] ?? pickWord(length, language),
   };
 }
 
-function normalizeDictionaryWord(value: string) {
-  return value.trim().toLowerCase().replace(/ё/g, 'е');
+function normalizeDictionaryWord(value: string, language: WordleLanguage = 'ru') {
+  const normalizedValue = value.trim().toLowerCase();
+  return language === 'ru' ? normalizedValue.replace(/ё/g, 'е') : normalizedValue;
 }
 
-function addWordByLength(target: Record<WordLength, Set<string>>, word: string) {
-  const normalizedWord = normalizeDictionaryWord(word);
+function getLanguagePattern(language: WordleLanguage) {
+  return language === 'kk' ? /^[а-яәғқңөұүһіё]+$/ : /^[а-я]+$/;
+}
+
+function getInputCleanupPattern(language: WordleLanguage) {
+  return language === 'kk' ? /[^а-яәғқңөұүһіё]/g : /[^а-я]/g;
+}
+
+function addWordByLength(target: Record<WordLength, Set<string>>, word: string, language: WordleLanguage) {
+  const normalizedWord = normalizeDictionaryWord(word, language);
   const wordLength = normalizedWord.length;
 
   if (wordLength === 4 || wordLength === 5 || wordLength === 6) {
@@ -177,11 +333,12 @@ function addWordByLength(target: Record<WordLength, Set<string>>, word: string) 
   }
 }
 
-function addWordForms(target: Record<WordLength, Set<string>>, word: string) {
-  const normalizedWord = normalizeDictionaryWord(word);
-  if (!/^[а-я]+$/.test(normalizedWord)) return;
+function addWordForms(target: Record<WordLength, Set<string>>, word: string, language: WordleLanguage) {
+  const normalizedWord = normalizeDictionaryWord(word, language);
+  if (!getLanguagePattern(language).test(normalizedWord)) return;
 
-  addWordByLength(target, normalizedWord);
+  addWordByLength(target, normalizedWord, language);
+  if (language === 'kk') return;
 
   const lastLetter = normalizedWord[normalizedWord.length - 1];
   const withoutLastLetter = normalizedWord.slice(0, -1);
@@ -195,10 +352,10 @@ function addWordForms(target: Record<WordLength, Set<string>>, word: string) {
   };
   const endings = lastLetter ? formEndingsByLastLetter[lastLetter] : undefined;
 
-  endings?.forEach((ending) => addWordByLength(target, `${withoutLastLetter}${ending}`));
+  endings?.forEach((ending) => addWordByLength(target, `${withoutLastLetter}${ending}`, language));
 
   if (lastLetter && !'аеёиоуыэюяьй'.includes(lastLetter)) {
-    ['а', 'у', 'е', 'ом', 'ы'].forEach((ending) => addWordByLength(target, `${normalizedWord}${ending}`));
+    ['а', 'у', 'е', 'ом', 'ы'].forEach((ending) => addWordByLength(target, `${normalizedWord}${ending}`, language));
   }
 }
 
@@ -297,44 +454,52 @@ function addFourLetterCheckVariants(words: Set<string>) {
   }
 }
 
-function createWordleAllowedWords() {
+function createWordleAllowedWords(language: WordleLanguage) {
+  const targetWords = WORDLE_TARGET_WORDS_BY_LANGUAGE[language];
+  const sourceWords = WORDLE_SOURCE_WORDS_BY_LANGUAGE[language];
   const allowedWords: Record<WordLength, Set<string>> = {
-    4: new Set(WORDLE_TARGET_WORDS[4]),
-    5: new Set(WORDLE_TARGET_WORDS[5]),
-    6: new Set(WORDLE_TARGET_WORDS[6]),
+    4: new Set(targetWords[4]),
+    5: new Set(targetWords[5]),
+    6: new Set(targetWords[6]),
   };
 
-  [...WORDS[4], ...WORDS[5], ...WORDS[6], ...SECRET_WORDS].forEach((word) => {
-    addWordForms(allowedWords, word);
+  [...sourceWords[4], ...sourceWords[5], ...sourceWords[6], ...(language === 'ru' ? SECRET_WORDS : [])].forEach((word) => {
+    addWordForms(allowedWords, word, language);
   });
 
-  addFourLetterCheckVariants(allowedWords[4]);
-  addFiveLetterCheckVariants(allowedWords[5]);
-  addSixLetterCheckVariants(allowedWords[6]);
+  if (language === 'ru') {
+    addFourLetterCheckVariants(allowedWords[4]);
+    addFiveLetterCheckVariants(allowedWords[5]);
+    addSixLetterCheckVariants(allowedWords[6]);
+  }
 
   return allowedWords;
 }
 
-const WORDLE_ALLOWED_WORDS = createWordleAllowedWords();
+const WORDLE_ALLOWED_WORDS_BY_LANGUAGE: Record<WordleLanguage, Record<WordLength, Set<string>>> = {
+  ru: createWordleAllowedWords('ru'),
+  kk: createWordleAllowedWords('kk'),
+};
 
-function normalizeWord(value: string) {
-  return normalizeDictionaryWord(value);
+function normalizeWord(value: string, language: WordleLanguage = 'ru') {
+  return normalizeDictionaryWord(value, language);
 }
 
-function isPlausibleOfflineRussianWord(word: string, length: WordLength) {
-  if (word.length !== length || !/^[а-я]+$/.test(word)) return false;
+function isPlausibleOfflineWord(word: string, length: WordLength, language: WordleLanguage) {
+  if (word.length !== length || !getLanguagePattern(language).test(word)) return false;
 
   const uniqueLetters = new Set(word);
   if (uniqueLetters.size === 1) return false;
 
-  const vowels = word.match(/[аеёиоуыэюя]/g)?.length ?? 0;
+  const vowelPattern = language === 'kk' ? /[аәеёиоөұүыіэюя]/g : /[аеёиоуыэюя]/g;
+  const vowels = word.match(vowelPattern)?.length ?? 0;
   if (vowels === 0) return false;
 
   return true;
 }
 
-function getWordKey(word: string, length: WordLength) {
-  return `${length}:${word}`;
+function getWordKey(word: string, length: WordLength, language: WordleLanguage) {
+  return `${language}:${length}:${word}`;
 }
 
 function readCachedValidation(cacheKey: string) {
@@ -374,10 +539,12 @@ function readLocalLearnedWords() {
     if (!Array.isArray(parsed)) return new Set<string>();
 
     return new Set(
-      parsed.filter((item): item is string => (
-        typeof item === 'string' &&
-        /^[456]:[а-я]+$/.test(item)
-      )),
+      parsed.flatMap((item): string[] => {
+        if (typeof item !== 'string') return [];
+        if (/^(ru|kk):[456]:[а-яәғқңөұүһіё]+$/.test(item)) return [item];
+        if (/^[456]:[а-я]+$/.test(item)) return [`ru:${item}`];
+        return [];
+      }),
     );
   } catch {
     return new Set<string>();
@@ -392,12 +559,12 @@ function writeLocalLearnedWords(words: Set<string>) {
   }
 }
 
-function addLocalLearnedWord(word: string, length: WordLength) {
-  const normalizedWord = normalizeWord(word);
-  if (WORDLE_ALLOWED_WORDS[length].has(normalizedWord)) return;
+function addLocalLearnedWord(word: string, length: WordLength, language: WordleLanguage) {
+  const normalizedWord = normalizeWord(word, language);
+  if (getAllowedWords(language, length).has(normalizedWord)) return;
 
   const learnedWords = readLocalLearnedWords();
-  learnedWords.add(getWordKey(normalizedWord, length));
+  learnedWords.add(getWordKey(normalizedWord, length, language));
   writeLocalLearnedWords(learnedWords);
 }
 
@@ -425,14 +592,22 @@ function formatCountdown(milliseconds: number) {
   return [hours, minutes, seconds].map((value) => String(value).padStart(2, '0')).join(':');
 }
 
-function getDailyWord(dateKey: string) {
-  const words = Array.from(WORDLE_TARGET_WORDS[5]).sort();
+function getDailyWord(dateKey: string, language: WordleLanguage) {
+  const words = Array.from(getTargetWords(language, 5)).sort();
   const seed = Array.from(dateKey).reduce((sum, letter) => sum + letter.charCodeAt(0), 0);
-  return words[seed % words.length] ?? pickWord(5);
+  return words[seed % words.length] ?? pickWord(5, language);
 }
 
 function getWordleModeKey(userEmail: string) {
   return `${WORDLE_MODE_PREFIX}_${userEmail}`;
+}
+
+function getWordleLanguageKey(userEmail: string) {
+  return `${WORDLE_LANGUAGE_PREFIX}_${userEmail}`;
+}
+
+function loadWordleLanguage(userEmail: string): WordleLanguage {
+  return localStorage.getItem(getWordleLanguageKey(userEmail)) === 'kk' ? 'kk' : 'ru';
 }
 
 function loadWordleMode(userEmail: string): WordleMode {
@@ -441,14 +616,14 @@ function loadWordleMode(userEmail: string): WordleMode {
   return savedMode === 'daily' ? 'daily' : 'classic';
 }
 
-function getWordleStateKey(userEmail: string, mode: WordleMode, dateKey = getTodayKey()) {
+function getWordleStateKey(userEmail: string, mode: WordleMode, language: WordleLanguage, dateKey = getTodayKey()) {
   if (mode === 'campaign') {
-    return `${WORDLE_STATE_PREFIX}_${userEmail}_campaign`;
+    return `${WORDLE_STATE_PREFIX}_${userEmail}_${language}_campaign`;
   }
 
   return mode === 'daily'
-    ? `${WORDLE_STATE_PREFIX}_${userEmail}_daily_${dateKey}`
-    : `${WORDLE_STATE_PREFIX}_${userEmail}_classic`;
+    ? `${WORDLE_STATE_PREFIX}_${userEmail}_${language}_daily_${dateKey}`
+    : `${WORDLE_STATE_PREFIX}_${userEmail}_${language}_classic`;
 }
 
 function isWordLength(value: unknown): value is WordLength {
@@ -463,8 +638,8 @@ function isGameStatus(value: unknown): value is GameStatus {
   return value === 'playing' || value === 'won' || value === 'lost';
 }
 
-function loadWordleState(userEmail: string, mode: WordleMode, dateKey = getTodayKey()): SavedWordleState | null {
-  const saved = localStorage.getItem(getWordleStateKey(userEmail, mode, dateKey));
+function loadWordleState(userEmail: string, mode: WordleMode, language: WordleLanguage, dateKey = getTodayKey()): SavedWordleState | null {
+  const saved = localStorage.getItem(getWordleStateKey(userEmail, mode, language, dateKey));
   if (!saved) return null;
 
   try {
@@ -529,22 +704,26 @@ function parseWordValidation(value: string) {
   return null;
 }
 
-async function isRealRussianWord(word: string, length: WordLength) {
-  const cacheKey = getWordKey(word, length);
+async function isRealWord(word: string, length: WordLength, language: WordleLanguage) {
+  const cacheKey = getWordKey(word, length, language);
   const cachedValue = readCachedValidation(cacheKey);
   if (cachedValue !== undefined) {
     if (cachedValue) {
-      addLocalLearnedWord(word, length);
-      void saveLearnedWord(word, length);
+      addLocalLearnedWord(word, length, language);
+      void saveLearnedWord(word, length, language);
     }
     return cachedValue;
   }
 
+  const languageName = language === 'kk' ? 'казахское' : 'русское';
+  const languagePrompt = language === 'kk'
+    ? 'Ты проверяешь слова для казахской игры Wordle. Верни только JSON вида {"valid": true} или {"valid": false}. true только если это реально существующее казахское слово в начальной форме или обычной словарной форме. Не принимай наборы букв, опечатки, имена людей, бренды, сокращения, русские слова и слова не той длины.'
+    : 'Ты проверяешь слова для русской игры Wordle. Верни только JSON вида {"valid": true} или {"valid": false}. true только если это реально существующее русское слово в начальной форме или обычной словарной форме. Не принимай наборы букв, опечатки, имена людей, бренды, сокращения, английские слова и слова не той длины.';
+
   const { data, error } = await supabase.functions.invoke<AiTextResponse>('ai', {
     body: {
-      system:
-        'Ты проверяешь слова для русской игры Wordle. Верни только JSON вида {"valid": true} или {"valid": false}. true только если это реально существующее русское слово в начальной форме или обычной словарной форме. Не принимай наборы букв, опечатки, имена людей, бренды, сокращения, английские слова и слова не той длины.',
-      prompt: `Слово: "${word}". Длина должна быть ровно ${length} букв. Это существующее русское слово для Wordle?`,
+      system: languagePrompt,
+      prompt: `Слово: "${word}". Длина должна быть ровно ${length} букв. Это существующее ${languageName} слово для Wordle?`,
       json: true,
     },
   });
@@ -560,8 +739,8 @@ async function isRealRussianWord(word: string, length: WordLength) {
 
   writeCachedValidation(cacheKey, validation);
   if (validation) {
-    addLocalLearnedWord(word, length);
-    void saveLearnedWord(word, length);
+    addLocalLearnedWord(word, length, language);
+    void saveLearnedWord(word, length, language);
   }
   return validation;
 }
@@ -580,7 +759,7 @@ async function loadLearnedWords() {
 
   (data as LearnedWordRow[] | null)?.forEach((item) => {
     if (isWordLength(item.length)) {
-      learnedWords.add(getWordKey(normalizeWord(item.word), item.length));
+      learnedWords.add(getWordKey(normalizeWord(item.word, 'ru'), item.length, 'ru'));
     }
   });
 
@@ -588,12 +767,14 @@ async function loadLearnedWords() {
   return learnedWords;
 }
 
-async function saveLearnedWord(word: string, length: WordLength) {
-  const normalizedWord = normalizeWord(word);
+async function saveLearnedWord(word: string, length: WordLength, language: WordleLanguage) {
+  const normalizedWord = normalizeWord(word, language);
 
-  if (WORDLE_ALLOWED_WORDS[length].has(normalizedWord)) return;
+  if (getAllowedWords(language, length).has(normalizedWord)) return;
 
-  addLocalLearnedWord(normalizedWord, length);
+  addLocalLearnedWord(normalizedWord, length, language);
+
+  if (language !== 'ru') return;
 
   const { error } = await supabase
     .from('wordle_learned_words')
@@ -613,12 +794,12 @@ async function saveLearnedWord(word: string, length: WordLength) {
   }
 }
 
-function isAllowedWord(word: string, length: WordLength, learnedWords: Set<string>) {
-  return WORDLE_ALLOWED_WORDS[length].has(word) || learnedWords.has(getWordKey(word, length));
+function isAllowedWord(word: string, length: WordLength, learnedWords: Set<string>, language: WordleLanguage) {
+  return getAllowedWords(language, length).has(word) || learnedWords.has(getWordKey(word, length, language));
 }
 
-function pickWord(length: WordLength, currentWord?: string) {
-  const knownWords = Array.from(WORDLE_TARGET_WORDS[length]);
+function pickWord(length: WordLength, language: WordleLanguage, currentWord?: string) {
+  const knownWords = Array.from(getTargetWords(language, length));
   const options = knownWords.filter((word) => word !== currentWord);
   const words = options.length > 0 ? options : knownWords;
   return words[Math.floor(Math.random() * words.length)];
@@ -688,11 +869,12 @@ export function WordleGame({
   const boardRef = useRef<HTMLDivElement>(null);
   const mobileInputRef = useRef<HTMLInputElement>(null);
   const todayKey = getTodayKey();
+  const initialLanguage = loadWordleLanguage(userEmail);
   const initialMode = loadWordleMode(userEmail);
-  const savedState = loadWordleState(userEmail, initialMode, todayKey);
-  const initialDailyWord = getDailyWord(todayKey);
+  const savedState = loadWordleState(userEmail, initialMode, initialLanguage, todayKey);
+  const initialDailyWord = getDailyWord(todayKey, initialLanguage);
   const initialCampaignLevel = Math.max(1, Math.min(CAMPAIGN_LEVEL_COUNT, savedState?.campaignLevel ?? 1));
-  const initialCampaignWord = getCampaignWord(initialCampaignLevel);
+  const initialCampaignWord = getCampaignWord(initialCampaignLevel, initialLanguage);
   const activeSavedState =
     (initialMode === 'daily' && savedState?.targetWord !== initialDailyWord) ||
     (initialMode === 'campaign' && savedState?.targetWord !== initialCampaignWord.word)
@@ -705,7 +887,8 @@ export function WordleGame({
       ? initialDailyWord
       : initialMode === 'campaign'
         ? initialCampaignWord.word
-      : activeSavedState?.targetWord ?? pickWord(initialWordLength);
+      : activeSavedState?.targetWord ?? pickWord(initialWordLength, initialLanguage);
+  const [wordleLanguage, setWordleLanguage] = useState<WordleLanguage>(() => initialLanguage);
   const [wordleMode, setWordleMode] = useState<WordleMode>(() => initialMode);
   const [dailyDateKey, setDailyDateKey] = useState(() => todayKey);
   const [campaignLevel, setCampaignLevel] = useState(() => initialCampaignLevel);
@@ -746,10 +929,12 @@ export function WordleGame({
   }
 
   useEffect(() => {
+    localStorage.setItem(getWordleLanguageKey(userEmail), wordleLanguage);
     localStorage.setItem(getWordleModeKey(userEmail), wordleMode);
     localStorage.setItem(
-      getWordleStateKey(userEmail, wordleMode, dailyDateKey),
+      getWordleStateKey(userEmail, wordleMode, wordleLanguage, dailyDateKey),
       JSON.stringify({
+        language: wordleLanguage,
         wordLength,
         targetWord,
         guess,
@@ -760,7 +945,7 @@ export function WordleGame({
         campaignLevel,
       } satisfies SavedWordleState),
     );
-  }, [campaignLevel, dailyDateKey, guess, hintIndex, message, rows, status, targetWord, userEmail, wordLength, wordleMode]);
+  }, [campaignLevel, dailyDateKey, guess, hintIndex, message, rows, status, targetWord, userEmail, wordLength, wordleLanguage, wordleMode]);
 
   useEffect(() => {
     let active = true;
@@ -785,7 +970,7 @@ export function WordleGame({
     }, 1000);
 
     return () => window.clearInterval(timer);
-  }, [dailyDateKey, wordleMode]);
+  }, [dailyDateKey, wordleLanguage, wordleMode]);
 
   useEffect(() => {
     function handleReturnToGame() {
@@ -800,7 +985,7 @@ export function WordleGame({
       window.removeEventListener('focus', handleReturnToGame);
       document.removeEventListener('visibilitychange', handleReturnToGame);
     };
-  }, [dailyDateKey, wordleMode]);
+  }, [dailyDateKey, wordleLanguage, wordleMode]);
 
   function refreshDailyWordIfNeeded() {
     const currentTodayKey = getTodayKey();
@@ -810,8 +995,8 @@ export function WordleGame({
 
     if (wordleMode !== 'daily') return;
 
-    const dailyWord = getDailyWord(currentTodayKey);
-    const nextState = loadWordleState(userEmail, 'daily', currentTodayKey);
+    const dailyWord = getDailyWord(currentTodayKey, wordleLanguage);
+    const nextState = loadWordleState(userEmail, 'daily', wordleLanguage, currentTodayKey);
     applyState('daily', 5, dailyWord, nextState?.targetWord === dailyWord ? nextState : null);
   }
 
@@ -839,21 +1024,21 @@ export function WordleGame({
     if (wordleMode === 'daily') {
       const currentTodayKey = getTodayKey();
       setDailyDateKey(currentTodayKey);
-      const dailyWord = getDailyWord(currentTodayKey);
-      const nextState = loadWordleState(userEmail, 'daily', currentTodayKey);
+      const dailyWord = getDailyWord(currentTodayKey, wordleLanguage);
+      const nextState = loadWordleState(userEmail, 'daily', wordleLanguage, currentTodayKey);
       applyState('daily', 5, dailyWord, nextState?.targetWord === dailyWord ? nextState : null);
       return;
     }
 
     if (wordleMode === 'campaign') {
       const nextLevel = status === 'won' ? Math.min(CAMPAIGN_LEVEL_COUNT, campaignLevel + 1) : campaignLevel;
-      const nextCampaignWord = getCampaignWord(nextLevel);
+      const nextCampaignWord = getCampaignWord(nextLevel, wordleLanguage);
       applyState('campaign', nextCampaignWord.length, nextCampaignWord.word, null, nextLevel);
       return;
     }
 
     setWordLength(nextLength);
-    setTargetWord((currentWord) => pickWord(nextLength, currentWord));
+    setTargetWord((currentWord) => pickWord(nextLength, wordleLanguage, currentWord));
     setGuess('');
     setRows([]);
     setStatus('playing');
@@ -864,27 +1049,54 @@ export function WordleGame({
   }
 
   function openClassicMode(nextLength: WordLength) {
-    const nextState = loadWordleState(userEmail, 'classic', todayKey);
+    const nextState = loadWordleState(userEmail, 'classic', wordleLanguage, todayKey);
     const targetLength = nextState?.wordLength === nextLength ? nextLength : nextLength;
-    const target = nextState?.wordLength === nextLength ? nextState.targetWord : pickWord(nextLength);
+    const target = nextState?.wordLength === nextLength ? nextState.targetWord : pickWord(nextLength, wordleLanguage);
     applyState('classic', targetLength, target, nextState?.wordLength === nextLength ? nextState : null);
   }
 
   function openDailyMode() {
     const currentTodayKey = getTodayKey();
     setDailyDateKey(currentTodayKey);
-    const dailyWord = getDailyWord(currentTodayKey);
-    const nextState = loadWordleState(userEmail, 'daily', currentTodayKey);
+    const dailyWord = getDailyWord(currentTodayKey, wordleLanguage);
+    const nextState = loadWordleState(userEmail, 'daily', wordleLanguage, currentTodayKey);
     const validState = nextState?.targetWord === dailyWord ? nextState : null;
     applyState('daily', 5, dailyWord, validState);
   }
 
   function openCampaignMode() {
-    const nextState = loadWordleState(userEmail, 'campaign', todayKey);
+    const nextState = loadWordleState(userEmail, 'campaign', wordleLanguage, todayKey);
     const nextLevel = Math.max(1, Math.min(CAMPAIGN_LEVEL_COUNT, nextState?.campaignLevel ?? campaignLevel));
-    const campaignWord = getCampaignWord(nextLevel);
+    const campaignWord = getCampaignWord(nextLevel, wordleLanguage);
     const validState = nextState?.targetWord === campaignWord.word ? nextState : null;
     applyState('campaign', campaignWord.length, campaignWord.word, validState, nextLevel);
+  }
+
+  function changeLanguage(nextLanguage: WordleLanguage) {
+    if (nextLanguage === wordleLanguage) return;
+
+    setWordleLanguage(nextLanguage);
+    const currentTodayKey = getTodayKey();
+    setDailyDateKey(currentTodayKey);
+
+    if (wordleMode === 'daily') {
+      const dailyWord = getDailyWord(currentTodayKey, nextLanguage);
+      const nextState = loadWordleState(userEmail, 'daily', nextLanguage, currentTodayKey);
+      applyState('daily', 5, dailyWord, nextState?.targetWord === dailyWord ? nextState : null);
+      return;
+    }
+
+    if (wordleMode === 'campaign') {
+      const nextState = loadWordleState(userEmail, 'campaign', nextLanguage, currentTodayKey);
+      const nextLevel = Math.max(1, Math.min(CAMPAIGN_LEVEL_COUNT, nextState?.campaignLevel ?? 1));
+      const campaignWord = getCampaignWord(nextLevel, nextLanguage);
+      applyState('campaign', campaignWord.length, campaignWord.word, nextState?.targetWord === campaignWord.word ? nextState : null, nextLevel);
+      return;
+    }
+
+    const nextState = loadWordleState(userEmail, 'classic', nextLanguage, currentTodayKey);
+    const nextLength = nextState?.wordLength ?? wordLength;
+    applyState('classic', nextLength, nextState?.targetWord ?? pickWord(nextLength, nextLanguage), nextState);
   }
 
   function openAdForHint() {
@@ -918,7 +1130,7 @@ export function WordleGame({
   }
 
   async function submitCurrentGuess() {
-    const normalizedGuess = normalizeWord(guess);
+    const normalizedGuess = normalizeWord(guess, wordleLanguage);
     if (status !== 'playing' || checkingWord) return;
 
     if (normalizedGuess.length !== wordLength) {
@@ -932,8 +1144,8 @@ export function WordleGame({
 
     try {
       const validWord =
-        isAllowedWord(normalizedGuess, wordLength, learnedWords) ||
-        (await isRealRussianWord(normalizedGuess, wordLength));
+        isAllowedWord(normalizedGuess, wordLength, learnedWords, wordleLanguage) ||
+        (await isRealWord(normalizedGuess, wordLength, wordleLanguage));
 
       if (!validWord) {
         setMessage('Такого слова нет в словаре игры. Попробуй другое.');
@@ -941,15 +1153,15 @@ export function WordleGame({
         return;
       }
 
-      if (!WORDLE_ALLOWED_WORDS[wordLength].has(normalizedGuess)) {
-        const wordKey = getWordKey(normalizedGuess, wordLength);
+      if (!getAllowedWords(wordleLanguage, wordLength).has(normalizedGuess)) {
+        const wordKey = getWordKey(normalizedGuess, wordLength, wordleLanguage);
         setLearnedWords((currentLearnedWords) => new Set(currentLearnedWords).add(wordKey));
       }
     } catch (error) {
       console.error(error instanceof Error ? error.message : 'Не получилось проверить слово через ИИ.');
       const validOfflineWord =
-        isAllowedWord(normalizedGuess, wordLength, learnedWords) ||
-        isPlausibleOfflineRussianWord(normalizedGuess, wordLength);
+        isAllowedWord(normalizedGuess, wordLength, learnedWords, wordleLanguage) ||
+        isPlausibleOfflineWord(normalizedGuess, wordLength, wordleLanguage);
 
       if (!validOfflineWord) {
         setMessage('ИИ недоступен, а такого слова нет в локальном словаре игры.');
@@ -957,8 +1169,8 @@ export function WordleGame({
         return;
       }
 
-      if (!WORDLE_ALLOWED_WORDS[wordLength].has(normalizedGuess)) {
-        const wordKey = getWordKey(normalizedGuess, wordLength);
+      if (!getAllowedWords(wordleLanguage, wordLength).has(normalizedGuess)) {
+        const wordKey = getWordKey(normalizedGuess, wordLength, wordleLanguage);
         setLearnedWords((currentLearnedWords) => new Set(currentLearnedWords).add(wordKey));
       }
     } finally {
@@ -1017,7 +1229,7 @@ export function WordleGame({
       return;
     }
 
-    const letter = normalizeWord(e.key).replace(/[^а-я]/g, '');
+    const letter = normalizeWord(e.key, wordleLanguage).replace(getInputCleanupPattern(wordleLanguage), '');
     if (letter.length === 1 && guess.length < wordLength) {
       e.preventDefault();
       addLetter(letter);
@@ -1028,7 +1240,7 @@ export function WordleGame({
   function handleMobileInputChange(value: string) {
     if (status !== 'playing' || checkingWord) return;
 
-    const letters = normalizeWord(value).replace(/[^а-я]/g, '').slice(0, wordLength);
+    const letters = normalizeWord(value, wordleLanguage).replace(getInputCleanupPattern(wordleLanguage), '').slice(0, wordLength);
     setGuess(letters);
     setMessage('');
   }
@@ -1052,6 +1264,8 @@ export function WordleGame({
     window.setTimeout(focusBoard, 0);
   }
 
+  const currentAlphabet = wordleLanguage === 'kk' ? KAZAKH_ALPHABET : RUSSIAN_ALPHABET;
+
   return (
     <section className="wordle-shell">
       <div className="game-card">
@@ -1065,6 +1279,19 @@ export function WordleGame({
         <p className="currency-note">
           Баланс: {coins} монет. Победа дает {rewardCoins}, подсказка стоит {hintCost}.
         </p>
+
+        <div className="wordle-language-tabs" aria-label="Выбор языка Wordle">
+          {WORDLE_LANGUAGES.map((language) => (
+            <button
+              className={wordleLanguage === language.id ? 'mode-button active' : 'mode-button'}
+              key={language.id}
+              onClick={() => changeLanguage(language.id)}
+              type="button"
+            >
+              {language.title}
+            </button>
+          ))}
+        </div>
 
         <div className="wordle-modes" aria-label="Длина слова">
           {([4, 5, 6] as const).map((length) => (
@@ -1157,7 +1384,7 @@ export function WordleGame({
           </div>
 
           <div className="letter-board" aria-label="Список букв">
-            {RUSSIAN_ALPHABET.map((letter) => {
+            {currentAlphabet.map((letter) => {
               const letterStatus = letterStatuses[letter] ?? 'unused';
 
               return (

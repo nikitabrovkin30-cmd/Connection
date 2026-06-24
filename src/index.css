@@ -1176,6 +1176,13 @@ button.ghost:hover {
   margin-bottom: 8px;
 }
 
+.wordle-language-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
 .mode-button {
   border: 1px solid #badfd1;
   background: #ffffff;
