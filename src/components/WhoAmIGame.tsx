@@ -37,12 +37,6 @@ type WhoAmIGameProps = {
 
 const WHO_AM_I_STATE_PREFIX = 'who_am_i_state';
 
-const WHO_AM_I_WORDS = SECRET_WORDS.filter((word) => (
-  word.length >= 4 &&
-  word.length <= 10 &&
-  /^[а-яё]+$/.test(word)
-));
-
 const WHO_LOCAL_TOPICS: Record<string, readonly string[]> = {
   animal: [
     'акула', 'бегемот', 'белка', 'бобр', 'бык', 'волк', 'ворона', 'гусь', 'дельфин', 'ежик',
@@ -101,6 +95,19 @@ const WHO_LOCAL_TOPICS: Record<string, readonly string[]> = {
     'певец', 'ребенок', 'семья', 'строитель', 'учитель', 'человек',
   ],
 };
+
+const WHO_AM_I_TARGET_TOPICS = ['animal', 'nature', 'object'] as const;
+
+const WHO_AM_I_TARGET_SET = new Set(
+  WHO_AM_I_TARGET_TOPICS.flatMap((topic) => WHO_LOCAL_TOPICS[topic]),
+);
+
+const WHO_AM_I_WORDS = SECRET_WORDS.filter((word) => (
+  word.length >= 4 &&
+  word.length <= 10 &&
+  /^[а-яё]+$/.test(word) &&
+  WHO_AM_I_TARGET_SET.has(normalizeWord(word))
+));
 
 const WHO_LOCAL_QUESTION_RULES: readonly {
   answerTopic: keyof typeof WHO_LOCAL_TOPICS;
