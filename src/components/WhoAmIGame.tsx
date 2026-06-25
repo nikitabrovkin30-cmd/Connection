@@ -122,6 +122,44 @@ const WHO_LOCAL_QUESTION_RULES: readonly {
   { answerTopic: 'person', keywords: ['человек', 'люди', 'профессия', 'родственник', 'персонаж'] },
 ];
 
+const WHO_FUNCTION_QUESTION_RULES: readonly {
+  keywords: readonly string[];
+  yesWords: readonly string[];
+}[] = [
+  {
+    keywords: ['сидень', 'сидеть', 'сесть', 'садятся', 'посидеть'],
+    yesWords: ['стул', 'кресло', 'диван', 'скамейка', 'табурет', 'лавка'],
+  },
+  {
+    keywords: ['писать', 'записывать', 'рисовать', 'чертить'],
+    yesWords: ['ручка', 'карандаш', 'перо', 'мел', 'кисть'],
+  },
+  {
+    keywords: ['резать', 'отрезать', 'рубить', 'разрезать'],
+    yesWords: ['нож', 'ножницы', 'топор', 'пила'],
+  },
+  {
+    keywords: ['светить', 'освещать', 'свет', 'темноте'],
+    yesWords: ['лампа', 'фонарь', 'свеча'],
+  },
+  {
+    keywords: ['пить', 'наливать', 'напиток'],
+    yesWords: ['стакан', 'чашка', 'кружка', 'бутылка', 'чайник'],
+  },
+  {
+    keywords: ['звонить', 'сообщение', 'связи'],
+    yesWords: ['телефон'],
+  },
+  {
+    keywords: ['хранить', 'складывать', 'носить вещи', 'положить внутрь'],
+    yesWords: ['шкаф', 'ящик', 'сумка', 'рюкзак', 'чемодан', 'корзина', 'банка'],
+  },
+  {
+    keywords: ['двигатель', 'мотор', 'заводит', 'запускает', 'вращает'],
+    yesWords: ['мотор'],
+  },
+];
+
 function normalizeWord(value: string) {
   return value.trim().toLowerCase().replace(/ё/g, 'е');
 }
@@ -153,6 +191,20 @@ function answerFromLocalDictionary(question: string, targetWord: string): 'Да'
   const normalizedQuestion = normalizeWord(question)
     .replace(/[?!.,:;()"«»]/g, ' ')
     .replace(/\s+/g, ' ');
+  const normalizedTarget = normalizeWord(targetWord);
+  const questionWords = normalizedQuestion.split(' ').filter(Boolean);
+
+  if (questionWords.some((word) => WHO_AM_I_TARGET_SET.has(word))) {
+    return questionWords.includes(normalizedTarget) ? 'Да' : 'Нет';
+  }
+
+  const matchedFunctionRule = WHO_FUNCTION_QUESTION_RULES.find((rule) => (
+    rule.keywords.some((keyword) => normalizedQuestion.includes(normalizeWord(keyword)))
+  ));
+
+  if (matchedFunctionRule) {
+    return matchedFunctionRule.yesWords.includes(normalizedTarget) ? 'Да' : 'Нет';
+  }
 
   const matchedRule = WHO_LOCAL_QUESTION_RULES.find((rule) => (
     rule.keywords.some((keyword) => normalizedQuestion.includes(normalizeWord(keyword)))
@@ -263,8 +315,8 @@ async function askYesNo(question: string, targetWord: string) {
   const { data, error } = await supabase.functions.invoke<AiTextResponse>('ai', {
     body: {
       system:
-        'Ты ведущий игры Who am I. Игрок пытается угадать секретное русское слово. Отвечай строго только одним словом: "Да" или "Нет". Не объясняй, не давай подсказок, не раскрывай секретное слово. Если вопрос нельзя уверенно проверить для секретного слова, отвечай "Нет".',
-      prompt: `Секретное слово: "${targetWord}". Вопрос игрока: "${question}". Ответь только "Да" или "Нет".`,
+        'Ты ведущий игры Who am I. Игрок пытается угадать секретное русское слово. Отвечай строго только одним словом: "Да" или "Нет". Сначала проверь точное свойство или назначение, о котором спрашивает игрок. Если вопрос про "предмет для сиденья", отвечай "Да" только для стула, кресла, дивана, скамейки и похожих вещей, на которых сидят. Не отвечай "Да" всем предметам только потому, что они предметы. Не объясняй, не давай подсказок, не раскрывай секретное слово. Если вопрос нельзя уверенно проверить для секретного слова, отвечай "Нет".',
+      prompt: `Секретное слово: "${targetWord}". Вопрос игрока: "${question}". Ответь только "Да" или "Нет" по точному смыслу вопроса.`,
     },
   });
 
@@ -422,11 +474,12 @@ export function WhoAmIGame({
           Задавай вопросы, на которые можно ответить только да или нет. Потом попробуй угадать слово.
         </p>
 
-        <div className="secret-box who-secret">
+        <div className={`secret-box who-secret${roundFinished ? ' who-secret-finished' : ''}`}>
           {roundFinished ? (
-            <span>
-              Секретное слово: <strong>{targetWord}</strong>
-            </span>
+            <div className="who-answer-reveal">
+              <span>Секретное слово:</span>
+              <strong>{targetWord}</strong>
+            </div>
           ) : (
             <>
               <span>Секретное слово</span>

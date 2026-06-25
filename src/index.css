@@ -1198,6 +1198,22 @@ button.ghost:hover {
   background: #eef4ff;
 }
 
+.who-secret-finished {
+  border-color: #ffc000;
+}
+
+.who-answer-reveal {
+  display: grid;
+  gap: 6px;
+}
+
+.secret-box .who-answer-reveal strong {
+  color: #ffc000;
+  font-size: clamp(36px, 8vw, 72px);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
 .who-secret span + strong {
   margin-left: 6px;
 }
