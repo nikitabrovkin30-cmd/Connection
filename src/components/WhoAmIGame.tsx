@@ -194,10 +194,6 @@ function answerFromLocalDictionary(question: string, targetWord: string): 'Да'
   const normalizedTarget = normalizeWord(targetWord);
   const questionWords = normalizedQuestion.split(' ').filter(Boolean);
 
-  if (questionWords.some((word) => WHO_AM_I_TARGET_SET.has(word))) {
-    return questionWords.includes(normalizedTarget) ? 'Да' : 'Нет';
-  }
-
   const matchedFunctionRule = WHO_FUNCTION_QUESTION_RULES.find((rule) => (
     rule.keywords.some((keyword) => normalizedQuestion.includes(normalizeWord(keyword)))
   ));
@@ -210,9 +206,19 @@ function answerFromLocalDictionary(question: string, targetWord: string): 'Да'
     rule.keywords.some((keyword) => normalizedQuestion.includes(normalizeWord(keyword)))
   ));
 
-  if (!matchedRule) return null;
+  if (matchedRule) {
+    if (matchedRule.answerTopic === 'nature') {
+      return hasTopic(targetWord, 'nature') || hasTopic(targetWord, 'animal') ? 'Да' : 'Нет';
+    }
 
-  return hasTopic(targetWord, matchedRule.answerTopic) ? 'Да' : 'Нет';
+    return hasTopic(targetWord, matchedRule.answerTopic) ? 'Да' : 'Нет';
+  }
+
+  if (questionWords.some((word) => WHO_AM_I_TARGET_SET.has(word))) {
+    return questionWords.includes(normalizedTarget) ? 'Да' : 'Нет';
+  }
+
+  return null;
 }
 
 function getWordTopics(word: string) {
