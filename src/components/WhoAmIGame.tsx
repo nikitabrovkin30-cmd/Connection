@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { SECRET_WORDS } from '../data/wordBank';
 import { supabase } from '../lib/supabase';
@@ -32,8 +32,89 @@ type WhoAmIGameProps = {
   onReward: () => void;
   onSpendCoins: () => boolean;
   rewardCoins: number;
+  uiLanguage: 'ru' | 'kk' | 'en';
   userEmail: string;
 };
+
+type UiLanguage = WhoAmIGameProps['uiLanguage'];
+
+const WHO_UI_TEXT = {
+  ru: {
+    player: 'Игрок',
+    subtitle: 'Задавай вопросы, на которые можно ответить только да или нет. Потом попробуй угадать слово.',
+    secretWord: 'Секретное слово',
+    questionPlaceholder: 'например: это живое?',
+    answering: 'Отвечаю...',
+    ask: 'Спросить',
+    guessPlaceholder: 'твой ответ',
+    guess: 'Угадать',
+    hintCoins: (cost: number) => `Подсказка за ${cost} монет`,
+    hintAd: 'Подсказка за рекламу',
+    giveUp: 'Сдаться',
+    newWord: 'Новое слово',
+    questions: 'Вопросы',
+    noQuestions: 'Пока нет вопросов.',
+    yes: 'Да',
+    no: 'Нет',
+    aiUnavailable: 'ИИ сейчас недоступен, поэтому я не могу ответить да или нет.',
+    correct: (word: string, reward: number) => `Верно! Это слово: ${word}. +${reward} монет.`,
+    wrong: 'Пока нет. Задай еще вопрос или попробуй другое слово.',
+    answerWas: (word: string) => `Ответ был: ${word}.`,
+    needCoins: (cost: number) => `Нужно ${cost} монет для подсказки.`,
+    hintBought: (cost: number) => `Подсказка куплена за ${cost} монет.`,
+    adHintOpened: 'Реклама просмотрена. Подсказка открыта.',
+  },
+  kk: {
+    player: 'Ойыншы',
+    subtitle: 'Тек иә немесе жоқ деп жауап беруге болатын сұрақтар қой. Кейін сөзді тап.',
+    secretWord: 'Жасырын сөз',
+    questionPlaceholder: 'мысалы: бұл тірі ме?',
+    answering: 'Жауап беруде...',
+    ask: 'Сұрау',
+    guessPlaceholder: 'жауабың',
+    guess: 'Табу',
+    hintCoins: (cost: number) => `${cost} монетаға кеңес`,
+    hintAd: 'Жарнама арқылы кеңес',
+    giveUp: 'Берілу',
+    newWord: 'Жаңа сөз',
+    questions: 'Сұрақтар',
+    noQuestions: 'Әзірге сұрақ жоқ.',
+    yes: 'Иә',
+    no: 'Жоқ',
+    aiUnavailable: 'ИИ қазір қолжетімсіз, сондықтан иә немесе жоқ деп жауап бере алмаймын.',
+    correct: (word: string, reward: number) => `Дұрыс! Бұл сөз: ${word}. +${reward} монета.`,
+    wrong: 'Әзірге жоқ. Тағы сұрақ қой немесе басқа сөзді байқап көр.',
+    answerWas: (word: string) => `Жауап: ${word}.`,
+    needCoins: (cost: number) => `Кеңес үшін ${cost} монета керек.`,
+    hintBought: (cost: number) => `Кеңес ${cost} монетаға сатып алынды.`,
+    adHintOpened: 'Жарнама қаралды. Кеңес ашылды.',
+  },
+  en: {
+    player: 'Player',
+    subtitle: 'Ask questions that can be answered only yes or no. Then try to guess the word.',
+    secretWord: 'Secret word',
+    questionPlaceholder: 'for example: is it alive?',
+    answering: 'Answering...',
+    ask: 'Ask',
+    guessPlaceholder: 'your answer',
+    guess: 'Guess',
+    hintCoins: (cost: number) => `Hint for ${cost} coins`,
+    hintAd: 'Hint for ad',
+    giveUp: 'Give up',
+    newWord: 'New word',
+    questions: 'Questions',
+    noQuestions: 'No questions yet.',
+    yes: 'Yes',
+    no: 'No',
+    aiUnavailable: 'AI is unavailable, so I cannot answer yes or no right now.',
+    correct: (word: string, reward: number) => `Correct! The word is: ${word}. +${reward} coins.`,
+    wrong: 'Not yet. Ask another question or try another word.',
+    answerWas: (word: string) => `Answer was: ${word}.`,
+    needCoins: (cost: number) => `You need ${cost} coins for a hint.`,
+    hintBought: (cost: number) => `Hint bought for ${cost} coins.`,
+    adHintOpened: 'Ad watched. Hint opened.',
+  },
+} as const;
 
 const WHO_AM_I_STATE_PREFIX = 'who_am_i_state';
 
@@ -109,6 +190,30 @@ const WHO_AM_I_WORDS = SECRET_WORDS.filter((word) => (
   WHO_AM_I_TARGET_SET.has(normalizeWord(word))
 ));
 
+const WHO_LOCAL_TOPICS_EN = {
+  animal: ['dog', 'cat', 'wolf', 'bear', 'lion', 'tiger', 'rabbit', 'eagle', 'duck', 'fish', 'horse', 'cow', 'goat', 'shark', 'dolphin', 'snake', 'frog', 'spider', 'turtle', 'whale'],
+  nature: ['river', 'ocean', 'forest', 'mountain', 'cloud', 'storm', 'flower', 'grass', 'planet', 'island', 'stone', 'sand', 'snow', 'rain', 'wind', 'tree', 'leaf', 'sun', 'moon', 'star'],
+  object: ['chair', 'table', 'phone', 'camera', 'guitar', 'bottle', 'window', 'wallet', 'pencil', 'mirror', 'key', 'lamp', 'spoon', 'bicycle', 'pillow', 'door', 'cup', 'hat', 'brush', 'bed', 'train', 'motor'],
+} as const;
+
+const WHO_LOCAL_TOPICS_KK = {
+  animal: ['ит', 'мысық', 'қасқыр', 'аю', 'арыстан', 'жолбарыс', 'қоян', 'бүркіт', 'үйрек', 'балық', 'жылқы', 'сиыр', 'ешкі', 'акула', 'дельфин', 'жылан', 'бақа', 'өрмекші', 'тасбақа', 'кит'],
+  nature: ['өзен', 'теңіз', 'орман', 'тау', 'бұлт', 'дауыл', 'гүл', 'шөп', 'ғаламшар', 'арал', 'тас', 'құм', 'қар', 'жаңбыр', 'жел', 'ағаш', 'жапырақ', 'күн', 'ай', 'жұлдыз'],
+  object: ['орындық', 'үстел', 'телефон', 'камера', 'гитара', 'бөтелке', 'терезе', 'әмиян', 'қарындаш', 'айна', 'кілт', 'шам', 'қасық', 'велосипед', 'жастық', 'есік', 'кесе', 'қалпақ', 'щетка', 'төсек', 'пойыз', 'мотор'],
+} as const;
+
+const WHO_LOCAL_TOPICS_BY_LANGUAGE = {
+  ru: WHO_LOCAL_TOPICS,
+  en: WHO_LOCAL_TOPICS_EN,
+  kk: WHO_LOCAL_TOPICS_KK,
+} as const;
+
+const WHO_AM_I_WORDS_BY_LANGUAGE: Record<UiLanguage, string[]> = {
+  ru: WHO_AM_I_WORDS,
+  en: Array.from(new Set(Object.values(WHO_LOCAL_TOPICS_EN).flat())),
+  kk: Array.from(new Set(Object.values(WHO_LOCAL_TOPICS_KK).flat())),
+};
+
 const WHO_LOCAL_QUESTION_RULES: readonly {
   answerTopic: keyof typeof WHO_LOCAL_TOPICS;
   keywords: readonly string[];
@@ -164,13 +269,14 @@ function normalizeWord(value: string) {
   return value.trim().toLowerCase().replace(/ё/g, 'е');
 }
 
-function getWhoAmIStateKey(userEmail: string) {
-  return `${WHO_AM_I_STATE_PREFIX}_${userEmail}`;
+function getWhoAmIStateKey(userEmail: string, language: UiLanguage) {
+  return `${WHO_AM_I_STATE_PREFIX}_${userEmail}_${language}`;
 }
 
-function pickWord(currentWord?: string) {
-  const options = WHO_AM_I_WORDS.filter((word) => word !== currentWord);
-  const words = options.length > 0 ? options : WHO_AM_I_WORDS;
+function pickWord(currentWord: string | undefined, language: UiLanguage) {
+  const languageWords = WHO_AM_I_WORDS_BY_LANGUAGE[language];
+  const options = languageWords.filter((word) => word !== currentWord);
+  const words = options.length > 0 ? options : languageWords;
   return words[Math.floor(Math.random() * words.length)] ?? 'книга';
 }
 
@@ -179,20 +285,62 @@ function parseYesNo(value: string): 'Да' | 'Нет' | null {
 
   if (normalizedValue.startsWith('да') || normalizedValue.includes('"да"')) return 'Да';
   if (normalizedValue.startsWith('нет') || normalizedValue.includes('"нет"')) return 'Нет';
+  if (normalizedValue.startsWith('yes') || normalizedValue.includes('"yes"')) return 'Да';
+  if (normalizedValue.startsWith('no') || normalizedValue.includes('"no"')) return 'Нет';
+  if (normalizedValue.startsWith('�?') || normalizedValue.includes('"�?"')) return 'Да';
+  if (normalizedValue.startsWith('��?') || normalizedValue.includes('"��?"')) return 'Нет';
 
   return null;
 }
 
-function hasTopic(word: string, topic: keyof typeof WHO_LOCAL_TOPICS) {
+function hasTopic(word: string, topic: keyof typeof WHO_LOCAL_TOPICS, language: UiLanguage = 'ru') {
+  if (language !== 'ru') {
+    const localizedTopic = topic as 'animal' | 'nature' | 'object';
+    const words = (WHO_LOCAL_TOPICS_BY_LANGUAGE[language][localizedTopic] ?? []) as readonly string[];
+    return words.includes(normalizeWord(word));
+  }
   return WHO_LOCAL_TOPICS[topic].includes(normalizeWord(word));
 }
 
-function answerFromLocalDictionary(question: string, targetWord: string): 'Да' | 'Нет' | null {
+function answerFromLocalDictionary(question: string, targetWord: string, language: UiLanguage): 'Да' | 'Нет' | null {
   const normalizedQuestion = normalizeWord(question)
     .replace(/[?!.,:;()"«»]/g, ' ')
     .replace(/\s+/g, ' ');
   const normalizedTarget = normalizeWord(targetWord);
   const questionWords = normalizedQuestion.split(' ').filter(Boolean);
+
+  if (language !== 'ru') {
+    const topics = WHO_LOCAL_TOPICS_BY_LANGUAGE[language];
+    const animalWords = topics.animal as readonly string[];
+    const natureWords = topics.nature as readonly string[];
+    const objectWords = topics.object as readonly string[];
+    const allWords = new Set(WHO_AM_I_WORDS_BY_LANGUAGE[language].map(normalizeWord));
+    const yes: 'Да' = 'Да';
+    const no: 'Нет' = 'Нет';
+    const hasAny = (keywords: readonly string[]) => keywords.some((keyword) => normalizedQuestion.includes(normalizeWord(keyword)));
+
+    if (hasAny(language === 'en' ? ['animal', 'alive', 'living', 'creature', 'bird', 'fish'] : ['жануар', 'тірі', 'құс', 'балық'])) {
+      return animalWords.includes(normalizedTarget) ? yes : no;
+    }
+
+    if (hasAny(language === 'en' ? ['nature', 'natural', 'plant', 'weather', 'sky', 'water', 'forest', 'earth'] : ['табиғат', 'өсімдік', 'ауа райы', 'аспан', 'су', 'орман', 'жер'])) {
+      return natureWords.includes(normalizedTarget) || animalWords.includes(normalizedTarget) ? yes : no;
+    }
+
+    if (hasAny(language === 'en' ? ['object', 'thing', 'item', 'tool', 'use', 'hold', 'take'] : ['зат', 'нәрсе', 'құрал', 'қолдан', 'ұста', 'алуға'])) {
+      return objectWords.includes(normalizedTarget) ? yes : no;
+    }
+
+    if (hasAny(language === 'en' ? ['sit', 'seat', 'sitting'] : ['отыру', 'отырғыш', 'отыратын'])) {
+      return ['chair', 'sofa', 'bench', 'bed', 'орындық', 'диван', 'төсек'].includes(normalizedTarget) ? yes : no;
+    }
+
+    if (questionWords.some((word) => allWords.has(word))) {
+      return questionWords.includes(normalizedTarget) ? yes : no;
+    }
+
+    return null;
+  }
 
   const matchedFunctionRule = WHO_FUNCTION_QUESTION_RULES.find((rule) => (
     rule.keywords.some((keyword) => normalizedQuestion.includes(normalizeWord(keyword)))
@@ -221,13 +369,33 @@ function answerFromLocalDictionary(question: string, targetWord: string): 'Да'
   return null;
 }
 
-function getWordTopics(word: string) {
-  return Object.entries(WHO_LOCAL_TOPICS)
+function getWordTopics(word: string, language: UiLanguage) {
+  return Object.entries(WHO_LOCAL_TOPICS_BY_LANGUAGE[language])
     .filter(([, words]) => words.includes(normalizeWord(word)))
     .map(([topic]) => topic);
 }
 
-function getTopicHint(topic: string) {
+function getTopicHint(topic: string, language: UiLanguage) {
+  if (language === 'en') {
+    const topicHints: Record<string, string> = {
+      animal: 'It belongs to the living world.',
+      nature: 'It is connected with nature.',
+      object: 'It is a thing people can use or see.',
+    };
+
+    return topicHints[topic] ?? 'Try asking which broad group it belongs to.';
+  }
+
+  if (language === 'kk') {
+    const topicHints: Record<string, string> = {
+      animal: 'Бұл тірі әлемге қатысты.',
+      nature: 'Бұл табиғатпен байланысты.',
+      object: 'Бұл адам қолдана алатын немесе көре алатын зат.',
+    };
+
+    return topicHints[topic] ?? 'Алдымен оның қай үлкен топқа жататынын сұрап көр.';
+  }
+
   const topicHints: Record<string, string> = {
     animal: 'Это относится к живому миру.',
     food: 'Это связано с едой, вкусом или кухней.',
@@ -260,15 +428,31 @@ function getUniqueHints(hints: readonly string[]) {
   return uniqueHints;
 }
 
-function getWhoHints(word: string) {
+function getWhoHints(word: string, language: UiLanguage) {
   const letters = Array.from(word);
-  const topics = getWordTopics(word);
-  const topicHint = topics[0] ? getTopicHint(topics[0]) : `В слове ${letters.length} букв.`;
+  const topics = getWordTopics(word, language);
+  const topicHint = topics[0] ? getTopicHint(topics[0], language) : `В слове ${letters.length} букв.`;
   const letterWord = letters.length === 1 ? 'буква' : letters.length > 1 && letters.length < 5 ? 'буквы' : 'букв';
   const middleIndex = Math.floor(letters.length / 2);
   const openedLetters = letters
     .map((letter, index) => (index === middleIndex ? letter : '_'))
     .join(' ');
+
+  if (language === 'en') {
+    return getUniqueHints([
+      topicHint,
+      `The word has ${letters.length} letters.`,
+      `Opened letter: ${openedLetters}.`,
+    ]);
+  }
+
+  if (language === 'kk') {
+    return getUniqueHints([
+      topicHint,
+      `�?��� ${letters.length} ?�� ���.`,
+      `����?�� ?��: ${openedLetters}.`,
+    ]);
+  }
 
   return getUniqueHints([
     topicHint,
@@ -277,8 +461,8 @@ function getWhoHints(word: string) {
   ]);
 }
 
-function loadWhoAmIState(userEmail: string): SavedWhoAmIState | null {
-  const saved = localStorage.getItem(getWhoAmIStateKey(userEmail));
+function loadWhoAmIState(userEmail: string, language: UiLanguage): SavedWhoAmIState | null {
+  const saved = localStorage.getItem(getWhoAmIStateKey(userEmail, language));
   if (!saved) return null;
 
   try {
@@ -286,7 +470,7 @@ function loadWhoAmIState(userEmail: string): SavedWhoAmIState | null {
 
     if (
       typeof parsed.targetWord !== 'string' ||
-      !WHO_AM_I_WORDS.includes(parsed.targetWord) ||
+      !WHO_AM_I_WORDS_BY_LANGUAGE[language].includes(parsed.targetWord) ||
       (parsed.status !== 'playing' && parsed.status !== 'won' && parsed.status !== 'gave-up')
     ) {
       return null;
@@ -314,8 +498,8 @@ function loadWhoAmIState(userEmail: string): SavedWhoAmIState | null {
   }
 }
 
-async function askYesNo(question: string, targetWord: string) {
-  const localAnswer = answerFromLocalDictionary(question, targetWord);
+async function askYesNo(question: string, targetWord: string, language: UiLanguage) {
+  const localAnswer = answerFromLocalDictionary(question, targetWord, language);
   if (localAnswer) return localAnswer;
 
   const { data, error } = await supabase.functions.invoke<AiTextResponse>('ai', {
@@ -344,10 +528,12 @@ export function WhoAmIGame({
   onReward,
   onSpendCoins,
   rewardCoins,
+  uiLanguage,
   userEmail,
 }: WhoAmIGameProps) {
-  const savedState = loadWhoAmIState(userEmail);
-  const [targetWord, setTargetWord] = useState(() => savedState?.targetWord ?? pickWord());
+  const text = WHO_UI_TEXT[uiLanguage];
+  const savedState = loadWhoAmIState(userEmail, uiLanguage);
+  const [targetWord, setTargetWord] = useState(() => savedState?.targetWord ?? pickWord(undefined, uiLanguage));
   const [question, setQuestion] = useState(() => savedState?.question ?? '');
   const [guess, setGuess] = useState(() => savedState?.guess ?? '');
   const [history, setHistory] = useState<QuestionAnswer[]>(() => savedState?.history ?? []);
@@ -359,12 +545,12 @@ export function WhoAmIGame({
 
   const roundFinished = status !== 'playing';
   const normalizedTarget = useMemo(() => normalizeWord(targetWord), [targetWord]);
-  const hints = useMemo(() => getWhoHints(targetWord), [targetWord]);
+  const hints = useMemo(() => getWhoHints(targetWord, uiLanguage), [targetWord, uiLanguage]);
   const shownHints = hints.slice(0, revealedHints);
 
   useEffect(() => {
     localStorage.setItem(
-      getWhoAmIStateKey(userEmail),
+      getWhoAmIStateKey(userEmail, uiLanguage),
       JSON.stringify({
         targetWord,
         question,
@@ -375,10 +561,10 @@ export function WhoAmIGame({
         message,
       } satisfies SavedWhoAmIState),
     );
-  }, [guess, history, message, question, revealedHints, status, targetWord, userEmail]);
+  }, [guess, history, message, question, revealedHints, status, targetWord, uiLanguage, userEmail]);
 
   function startNewRound() {
-    setTargetWord((currentWord) => pickWord(currentWord));
+    setTargetWord((currentWord) => pickWord(currentWord, uiLanguage));
     setQuestion('');
     setGuess('');
     setHistory([]);
@@ -399,7 +585,7 @@ export function WhoAmIGame({
     setMessage('Думаю над ответом...');
 
     try {
-      const answer = await askYesNo(cleanQuestion, targetWord);
+      const answer = await askYesNo(cleanQuestion, targetWord, uiLanguage);
       setHistory((currentHistory) => [
         {
           id: `${Date.now()}-${currentHistory.length}`,
@@ -412,7 +598,7 @@ export function WhoAmIGame({
       setMessage('');
     } catch (error) {
       console.error(error instanceof Error ? error.message : 'AI yes/no failed');
-      setMessage('ИИ сейчас недоступен, поэтому я не могу ответить да или нет.');
+      setMessage(text.aiUnavailable);
     } finally {
       setLoading(false);
     }
@@ -426,12 +612,12 @@ export function WhoAmIGame({
 
     if (normalizedGuess === normalizedTarget) {
       setStatus('won');
-      setMessage(`Верно! Это слово: ${targetWord}. +${rewardCoins} монет.`);
+      setMessage(text.correct(targetWord, rewardCoins));
       onReward();
       return;
     }
 
-    setMessage('Пока нет. Задай еще вопрос или попробуй другое слово.');
+    setMessage(text.wrong);
     setGuess('');
   }
 
@@ -439,7 +625,7 @@ export function WhoAmIGame({
     if (roundFinished) return;
     setStatus('gave-up');
     setShowAd(false);
-    setMessage(`Ответ был: ${targetWord}.`);
+    setMessage(text.answerWas(targetWord));
   }
 
   function revealHint() {
@@ -452,12 +638,12 @@ export function WhoAmIGame({
     if (roundFinished || revealedHints >= hints.length) return;
 
     if (coins < hintCost || !onSpendCoins()) {
-      setMessage(`Нужно ${hintCost} монет для подсказки.`);
+      setMessage(text.needCoins(hintCost));
       return;
     }
 
     revealHint();
-    setMessage(`Подсказка куплена за ${hintCost} монет.`);
+    setMessage(text.hintBought(hintCost));
   }
 
   function openAdForHint() {
@@ -468,27 +654,25 @@ export function WhoAmIGame({
   function closeAdAndRevealHint() {
     setShowAd(false);
     revealHint();
-    setMessage('Реклама просмотрена. Подсказка открыта.');
+    setMessage(text.adHintOpened);
   }
 
   return (
     <section className="who-shell">
       <div className="game-card who-card">
-        <p className="hello">Игрок: {userEmail}</p>
+        <p className="hello">{text.player}: {userEmail}</p>
         <h2>Who am I?</h2>
-        <p className="game-subtitle">
-          Задавай вопросы, на которые можно ответить только да или нет. Потом попробуй угадать слово.
-        </p>
+        <p className="game-subtitle">{text.subtitle}</p>
 
         <div className={`secret-box who-secret${roundFinished ? ' who-secret-finished' : ''}`}>
           {roundFinished ? (
             <div className="who-answer-reveal">
-              <span>Секретное слово:</span>
+              <span>{text.secretWord}:</span>
               <strong>{targetWord}</strong>
             </div>
           ) : (
             <>
-              <span>Секретное слово</span>
+              <span>{text.secretWord}</span>
               <strong>{'?'.repeat(targetWord.length)}</strong>
             </>
           )}
@@ -498,12 +682,12 @@ export function WhoAmIGame({
           <input
             disabled={roundFinished || loading}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="например: это живое?"
+            placeholder={text.questionPlaceholder}
             type="text"
             value={question}
           />
           <button disabled={roundFinished || loading || question.trim().length < 3} type="submit">
-            {loading ? 'Отвечаю...' : 'Спросить'}
+            {loading ? text.answering : text.ask}
           </button>
         </form>
 
@@ -511,12 +695,12 @@ export function WhoAmIGame({
           <input
             disabled={roundFinished}
             onChange={(e) => setGuess(e.target.value)}
-            placeholder="твой ответ"
+            placeholder={text.guessPlaceholder}
             type="text"
             value={guess}
           />
           <button disabled={roundFinished || !guess.trim()} type="submit">
-            Угадать
+            {text.guess}
           </button>
         </form>
 
@@ -527,7 +711,7 @@ export function WhoAmIGame({
             onClick={buyHint}
             type="button"
           >
-            Подсказка за {hintCost} монет
+            {text.hintCoins(hintCost)}
           </button>
           <button
             className="ad-button"
@@ -535,14 +719,14 @@ export function WhoAmIGame({
             onClick={openAdForHint}
             type="button"
           >
-            Подсказка за рекламу
+            {text.hintAd}
           </button>
           <button className="danger-button" disabled={roundFinished} onClick={giveUp} type="button">
-            Сдаться
+            {text.giveUp}
           </button>
           {roundFinished && (
             <button className="next-button" onClick={startNewRound} type="button">
-              Новое слово
+              {text.newWord}
             </button>
           )}
         </div>
@@ -560,15 +744,15 @@ export function WhoAmIGame({
         )}
 
         <aside className="who-history">
-          <h3>Вопросы</h3>
+          <h3>{text.questions}</h3>
           {history.length === 0 ? (
-            <p>Пока нет вопросов.</p>
+            <p>{text.noQuestions}</p>
           ) : (
             <ul>
               {history.map((item) => (
                 <li key={item.id}>
                   <span>{item.question}</span>
-                  <strong>{item.answer}</strong>
+                  <strong>{item.answer === 'Да' ? text.yes : text.no}</strong>
                 </li>
               ))}
             </ul>
@@ -576,7 +760,7 @@ export function WhoAmIGame({
         </aside>
       </div>
 
-      {showAd && <AdModal onClose={closeAdAndRevealHint} />}
+      {showAd && <AdModal onClose={closeAdAndRevealHint} uiLanguage={uiLanguage} />}
     </section>
   );
 }

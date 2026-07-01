@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { getHardClues, getWordCategory, getWordsForCategory, SECRET_WORDS } from '../data/wordBank';
 import type { AssociationCategoryId } from '../data/wordBank';
@@ -103,9 +103,186 @@ type ConnectionGameProps = {
   onReward: () => void;
   onSpendCoins: () => boolean;
   rewardCoins: number;
+  uiLanguage: 'ru' | 'kk' | 'en';
   userEmail: string;
   isGuest: boolean;
 };
+
+type UiLanguage = ConnectionGameProps['uiLanguage'];
+
+const ASSOCIATION_WORDS_BY_LANGUAGE: Record<Exclude<UiLanguage, 'ru'>, Record<AssociationCategoryId, string[]>> = {
+  en: {
+    all: [],
+    природа: [
+      'river', 'ocean', 'forest', 'mountain', 'cloud', 'storm', 'flower', 'grass', 'planet', 'island',
+      'desert', 'valley', 'winter', 'summer', 'sun', 'moon', 'star', 'rain', 'snow', 'wind',
+    ],
+    еда: [
+      'apple', 'bread', 'cheese', 'honey', 'lemon', 'orange', 'tomato', 'carrot', 'pepper', 'cookie',
+      'milk', 'sugar', 'coffee', 'tea', 'water', 'cake', 'banana', 'grape', 'potato', 'salad',
+    ],
+    место: [
+      'school', 'market', 'museum', 'castle', 'garden', 'bridge', 'airport', 'library', 'theater', 'village',
+      'city', 'park', 'beach', 'room', 'house', 'street', 'station', 'garage', 'cafe', 'office',
+    ],
+    предмет: [
+      'chair', 'table', 'phone', 'camera', 'guitar', 'bottle', 'basket', 'pillow', 'window', 'wallet',
+      'screen', 'button', 'letter', 'ticket', 'pencil', 'brush', 'knife', 'spoon', 'plate', 'lamp',
+    ],
+    материал: [
+      'metal', 'wood', 'glass', 'paper', 'stone', 'silver', 'gold', 'plastic', 'cotton', 'rubber',
+      'steel', 'brick', 'clay', 'fabric', 'leather', 'wool', 'sand', 'carbon', 'copper', 'iron',
+    ],
+    человек: [
+      'friend', 'family', 'doctor', 'teacher', 'artist', 'player', 'pilot', 'writer', 'singer', 'driver',
+      'mother', 'father', 'child', 'guest', 'hero', 'worker', 'leader', 'neighbor', 'student', 'people',
+    ],
+  },
+  kk: {
+    all: [],
+    природа: [
+      'өзен', 'теңіз', 'орман', 'тау', 'бұлт', 'дауыл', 'гүл', 'шөп', 'ғаламшар', 'арал',
+      'шөл', 'аңғар', 'қыс', 'жаз', 'күн', 'ай', 'жұлдыз', 'жаңбыр', 'қар', 'жел',
+    ],
+    еда: [
+      'алма', 'нан', 'ірімшік', 'бал', 'лимон', 'апельсин', 'қызанақ', 'сәбіз', 'бұрыш', 'печенье',
+      'сүт', 'қант', 'кофе', 'шай', 'су', 'торт', 'банан', 'жүзім', 'картоп', 'салат',
+    ],
+    место: [
+      'мектеп', 'базар', 'музей', 'сарай', 'бақ', 'көпір', 'әуежай', 'кітапхана', 'театр', 'ауыл',
+      'қала', 'саябақ', 'жағажай', 'бөлме', 'үй', 'көше', 'бекет', 'гараж', 'кафе', 'кеңсе',
+    ],
+    предмет: [
+      'орындық', 'үстел', 'телефон', 'камера', 'гитара', 'бөтелке', 'себет', 'жастық', 'терезе', 'әмиян',
+      'экран', 'батырма', 'хат', 'билет', 'қарындаш', 'қылқалам', 'пышақ', 'қасық', 'тәрелке', 'шам',
+    ],
+    материал: [
+      'металл', 'ағаш', 'әйнек', 'қағаз', 'тас', 'күміс', 'алтын', 'пластик', 'мақта', 'резеңке',
+      'болат', 'кірпіш', 'саз', 'мата', 'тері', 'жүн', 'құм', 'көміртек', 'мыс', 'темір',
+    ],
+    человек: [
+      'дос', 'отбасы', 'дәрігер', 'мұғалім', 'суретші', 'ойыншы', 'ұшқыш', 'жазушы', 'әнші', 'жүргізуші',
+      'ана', 'әке', 'бала', 'қонақ', 'батыр', 'жұмысшы', 'көшбасшы', 'көрші', 'оқушы', 'адамдар',
+    ],
+  },
+};
+
+ASSOCIATION_WORDS_BY_LANGUAGE.en.all = Array.from(new Set(
+  Object.entries(ASSOCIATION_WORDS_BY_LANGUAGE.en)
+    .filter(([category]) => category !== 'all')
+    .flatMap(([, words]) => words),
+));
+
+ASSOCIATION_WORDS_BY_LANGUAGE.kk.all = Array.from(new Set(
+  Object.entries(ASSOCIATION_WORDS_BY_LANGUAGE.kk)
+    .filter(([category]) => category !== 'all')
+    .flatMap(([, words]) => words),
+));
+
+function getAssociationWords(categoryId: AssociationCategoryId, language: UiLanguage) {
+  if (language === 'ru') return getWordsForCategory(categoryId);
+  return ASSOCIATION_WORDS_BY_LANGUAGE[language][categoryId];
+}
+
+function getAssociationWordCount(language: UiLanguage) {
+  return language === 'ru' ? SECRET_WORDS.length : ASSOCIATION_WORDS_BY_LANGUAGE[language].all.length;
+}
+
+const CONNECTION_UI_TEXT = {
+  ru: {
+    player: 'Игрок',
+    subtitle: 'Введи слово. Если это секретное слово, ты выиграешь. Если нет, игра покажет расстояние по смыслу: чем меньше число, тем ближе твоя ассоциация к ответу.',
+    dictionary: (count: number) => `В словаре ${count} слов. Подсказка открывается после короткой рекламы.`,
+    balance: (coins: number, reward: number, cost: number) => `Баланс: ${coins} монет. Победа дает ${reward}, подсказка стоит ${cost}.`,
+    secretWord: 'Секретное слово',
+    input: 'ассоциация или ответ',
+    checking: 'Проверяем...',
+    check: 'Проверить',
+    preparing: 'Готовим...',
+    hintCoins: (cost: number) => `Подсказка за ${cost} монет`,
+    hintAd: 'Подсказка за рекламу',
+    giveUp: 'Сдаться',
+    distance: 'расстояние до секретного слова',
+    searching: 'Ищем...',
+    meaning: 'Значение',
+    searchingMeaning: 'Ищем значение в толковом словаре...',
+    source: 'Источник',
+    correctWord: 'Правильное слово',
+    answerWas: 'Ответ был',
+    newWord: 'Новое слово',
+    historyTitle: 'Твои ассоциации',
+    emptyHistory: 'Пока пусто. Напиши первое слово.',
+    noMoreHints: 'Все разные подсказки уже открыты.',
+    aiHintError: 'ИИ сейчас недоступен. Проверь Supabase функцию ai и GEMINI_API_KEY.',
+    needCoins: (cost: number) => `Нужно ${cost} монет для подсказки.`,
+    hintBought: (cost: number) => `Подсказка куплена за ${cost} монет.`,
+    adHintOpened: 'Реклама просмотрена. Подсказка открыта.',
+    win: (reward: number) => `Победа! +${reward} монет.`,
+    aiDistanceError: 'ИИ сейчас недоступен. Без ИИ Association не может сравнить слова по смыслу.',
+  },
+  kk: {
+    player: 'Ойыншы',
+    subtitle: 'Сөз енгіз. Егер бұл жасырын сөз болса, сен жеңесің. Егер болмаса, ойын мағына бойынша арақашықтықты көрсетеді: сан аз болған сайын жауапқа жақын.',
+    dictionary: (count: number) => `Сөздікте ${count} сөз бар. Кеңес қысқа жарнамадан кейін ашылады.`,
+    balance: (coins: number, reward: number, cost: number) => `Баланс: ${coins} монета. Жеңіс ${reward} береді, кеңес ${cost} тұрады.`,
+    secretWord: 'Жасырын сөз',
+    input: 'ассоциация немесе жауап',
+    checking: 'Тексерілуде...',
+    check: 'Тексеру',
+    preparing: 'Дайындауда...',
+    hintCoins: (cost: number) => `${cost} монетаға кеңес`,
+    hintAd: 'Жарнама арқылы кеңес',
+    giveUp: 'Берілу',
+    distance: 'жасырын сөзге дейінгі арақашықтық',
+    searching: 'Ізделуде...',
+    meaning: 'Мағынасы',
+    searchingMeaning: 'Мағынасы сөздіктен ізделуде...',
+    source: 'Дереккөз',
+    correctWord: 'Дұрыс сөз',
+    answerWas: 'Жауап',
+    newWord: 'Жаңа сөз',
+    historyTitle: 'Сенің ассоциацияларың',
+    emptyHistory: 'Әзірге бос. Бірінші сөзді жаз.',
+    noMoreHints: 'Барлық әртүрлі кеңестер ашылды.',
+    aiHintError: 'ИИ қазір қолжетімсіз. Supabase ai функциясын және GEMINI_API_KEY тексер.',
+    needCoins: (cost: number) => `Кеңес үшін ${cost} монета керек.`,
+    hintBought: (cost: number) => `Кеңес ${cost} монетаға сатып алынды.`,
+    adHintOpened: 'Жарнама қаралды. Кеңес ашылды.',
+    win: (reward: number) => `Жеңіс! +${reward} монета.`,
+    aiDistanceError: 'ИИ қазір қолжетімсіз. ИИ болмаса Association сөздерді мағына бойынша салыстыра алмайды.',
+  },
+  en: {
+    player: 'Player',
+    subtitle: 'Enter a word. If it is the secret word, you win. If not, the game shows semantic distance: the smaller the number, the closer your association is.',
+    dictionary: (count: number) => `The dictionary has ${count} words. A hint opens after a short ad.`,
+    balance: (coins: number, reward: number, cost: number) => `Balance: ${coins} coins. A win gives ${reward}, a hint costs ${cost}.`,
+    secretWord: 'Secret word',
+    input: 'association or answer',
+    checking: 'Checking...',
+    check: 'Check',
+    preparing: 'Preparing...',
+    hintCoins: (cost: number) => `Hint for ${cost} coins`,
+    hintAd: 'Hint for ad',
+    giveUp: 'Give up',
+    distance: 'distance to the secret word',
+    searching: 'Searching...',
+    meaning: 'Meaning',
+    searchingMeaning: 'Searching meaning in the dictionary...',
+    source: 'Source',
+    correctWord: 'Correct word',
+    answerWas: 'Answer was',
+    newWord: 'New word',
+    historyTitle: 'Your associations',
+    emptyHistory: 'Empty for now. Write the first word.',
+    noMoreHints: 'All different hints are already open.',
+    aiHintError: 'AI is unavailable. Check the Supabase ai function and GEMINI_API_KEY.',
+    needCoins: (cost: number) => `You need ${cost} coins for a hint.`,
+    hintBought: (cost: number) => `Hint bought for ${cost} coins.`,
+    adHintOpened: 'Ad watched. Hint opened.',
+    win: (reward: number) => `Win! +${reward} coins.`,
+    aiDistanceError: 'AI is unavailable. Association cannot compare words by meaning without AI.',
+  },
+} as const;
 
 const WORD_MEANINGS: Record<string, string> = {
   кровать: 'Мебель для спанья: длинная рама с ножками и спинками, на которую кладут матрас и постельные принадлежности.',
@@ -232,8 +409,8 @@ async function fetchOzhegovMeaning(word: string) {
   return meaning;
 }
 
-function pickRandomWord(categoryId: AssociationCategoryId, currentWord?: string) {
-  const categoryWords = getWordsForCategory(categoryId);
+function pickRandomWord(categoryId: AssociationCategoryId, language: UiLanguage, currentWord?: string) {
+  const categoryWords = getAssociationWords(categoryId, language);
   const options = categoryWords.filter((word) => word !== currentWord);
   const words = options.length > 0 ? options : categoryWords;
   return words[Math.floor(Math.random() * words.length)];
@@ -243,16 +420,16 @@ function getGuestHistoryKey(targetWord: string) {
   return `${GUEST_HISTORY_PREFIX}_${targetWord}`;
 }
 
-function getConnectionStateKey(userEmail: string, categoryId: AssociationCategoryId) {
-  return `${CONNECTION_STATE_PREFIX}_${userEmail}_${categoryId}`;
+function getConnectionStateKey(userEmail: string, categoryId: AssociationCategoryId, language: UiLanguage) {
+  return `${CONNECTION_STATE_PREFIX}_${userEmail}_${language}_${categoryId}`;
 }
 
 function isGameStatus(value: unknown): value is GameStatus {
   return value === 'playing' || value === 'won' || value === 'gave-up';
 }
 
-function loadConnectionState(userEmail: string, categoryId: AssociationCategoryId): SavedConnectionState | null {
-  const saved = localStorage.getItem(getConnectionStateKey(userEmail, categoryId));
+function loadConnectionState(userEmail: string, categoryId: AssociationCategoryId, language: UiLanguage): SavedConnectionState | null {
+  const saved = localStorage.getItem(getConnectionStateKey(userEmail, categoryId, language));
   if (!saved) return null;
 
   try {
@@ -483,7 +660,8 @@ function parseDistance(value: string) {
   return Number.isFinite(distance) ? Math.max(2, Math.min(99, Math.round(distance))) : null;
 }
 
-async function getSemanticDistance(word: string, targetWord: string) {
+async function getSemanticDistance(word: string, targetWord: string, language: UiLanguage) {
+  const languageName = language === 'en' ? 'English' : language === 'kk' ? 'Kazakh' : 'Russian';
   const cacheKey = getDistanceCacheKey(word, targetWord);
   const cachedDistance = Number(readCacheValue(cacheKey));
 
@@ -495,7 +673,7 @@ async function getSemanticDistance(word: string, targetWord: string) {
     body: {
       system:
         'Ты оцениваешь русские слова для игры Association. Верни только JSON вида {"distance": число}. Поле distance всегда должно быть целым числом от 2 до 99. Оценивай только смысл, тему и обычные ассоциации, не похожесть букв. 2-10 почти синоним или часть одного предмета, 11-25 очень близкая ассоциация, 26-45 та же тема, 46-67 слабая связь. 68-99 ставь только если слова из разных больших категорий. Если слова из одной большой категории, даже при слабой связи число не должно быть больше 67. Не делай абстрактные слова слишком близкими к конкретным предметам. Пример: секрет "резина", игрок "шина" = 12, "колесо" = 22, "машина" = 35, "развлечение" = 82, "музыка" = 88. Пример: секрет "олень", игрок "лось" = 15, "лес" = 29, "рога" = 18, "машина" = 78.',
-      prompt: `Секретное слово: "${targetWord}". Слово игрока: "${word}". Верни только JSON, например {"distance": 80}.`,
+      prompt: `Language: ${languageName}. Secret word: "${targetWord}". Player word: "${word}". Compare only meaning, topic and common associations in this language, not letters. Return only JSON, for example {"distance": 80}.`,
       json: true,
     },
   });
@@ -514,18 +692,19 @@ async function getSemanticDistance(word: string, targetWord: string) {
   return tunedDistance;
 }
 
-async function getSmartDistance(word: string, targetWord: string) {
+async function getSmartDistance(word: string, targetWord: string, language: UiLanguage) {
   try {
-    return await getSemanticDistance(word, targetWord);
+    return await getSemanticDistance(word, targetWord, language);
   } catch (error) {
     console.error(error instanceof Error ? error.message : 'ИИ не смог сравнить слова.');
     return getLocalSemanticDistance(word, targetWord);
   }
 }
 
-async function getAiClue(word: string, clueIndex: number, bestDistance?: number) {
+async function getAiClue(word: string, clueIndex: number, bestDistance: number | undefined, language: UiLanguage) {
   const progress = getClueProgress(bestDistance);
-  const cacheKey = getClueCacheKey(word, clueIndex, progress);
+  const languageName = language === 'en' ? 'English' : language === 'kk' ? 'Kazakh' : 'Russian';
+  const cacheKey = getClueCacheKey(`${languageName}-${word}`, clueIndex, progress);
   const cachedClue = readCacheValue(cacheKey);
 
   if (cachedClue && !isStaleCloseWordClue(cachedClue) && !isGenericClue(cachedClue)) {
@@ -549,7 +728,7 @@ async function getAiClue(word: string, clueIndex: number, bestDistance?: number)
       'Дай подсказку через форму, действие или типичный пример, чтобы можно было добить ответ, но не раскрывай слово.',
     ],
   };
-  const clueStyle = clueStyleByProgress[progress][clueIndex] ?? 'Дай понятную подсказку, не называя само слово.';
+  const clueStyle = `${clueStyleByProgress[progress][clueIndex] ?? 'Дай понятную подсказку, не называя само слово.'} Write the hint in ${languageName}.`;
 
   const { data, error } = await supabase.functions.invoke<AiTextResponse>('ai', {
     body: {
@@ -573,7 +752,21 @@ async function getAiClue(word: string, clueIndex: number, bestDistance?: number)
   return clue;
 }
 
-function getLocalLetterClue(word: string, clueIndex: number, progress: ClueProgress) {
+function getLocalLetterClue(word: string, clueIndex: number, progress: ClueProgress, language: UiLanguage = 'ru') {
+  if (language === 'en') {
+    const letters = Array.from(word);
+    const visibleIndex = clueIndex % letters.length;
+    const pattern = letters.map((letter, index) => (index === visibleIndex ? letter : '_')).join(' ');
+    return `The word has ${letters.length} letters. Opened pattern: ${pattern}.`;
+  }
+
+  if (language === 'kk') {
+    const letters = Array.from(word);
+    const visibleIndex = clueIndex % letters.length;
+    const pattern = letters.map((letter, index) => (index === visibleIndex ? letter : '_')).join(' ');
+    return `�?��� ${letters.length} ?�� ���. ����?�� ?��: ${pattern}.`;
+  }
+
   const hardClues = getHardClues(word);
   const localIndex = progress === 'close' ? clueIndex + 2 : clueIndex;
   const fallbackIndex = localIndex % hardClues.length;
@@ -585,30 +778,30 @@ function normalizeClueText(value: string) {
   return value.trim().toLowerCase().replace(/ё/g, 'е').replace(/[.!?]+$/g, '').replace(/\s+/g, ' ');
 }
 
-function getUniqueLocalLetterClue(word: string, clueIndex: number, progress: ClueProgress, shownClues: readonly string[]) {
+function getUniqueLocalLetterClue(word: string, clueIndex: number, progress: ClueProgress, shownClues: readonly string[], language: UiLanguage = 'ru') {
   const shownClueTexts = new Set(shownClues.map(normalizeClueText));
   const hardClues = getHardClues(word);
 
   for (let offset = 0; offset < hardClues.length; offset += 1) {
-    const clue = getLocalLetterClue(word, clueIndex + offset, progress);
+    const clue = getLocalLetterClue(word, clueIndex + offset, progress, language);
     if (!shownClueTexts.has(normalizeClueText(clue))) return clue;
   }
 
   return `В слове ${Array.from(word).length} букв.`;
 }
 
-async function getSmartClue(word: string, clueIndex: number, bestDistance?: number) {
+async function getSmartClue(word: string, clueIndex: number, bestDistance: number | undefined, language: UiLanguage) {
   const progress = getClueProgress(bestDistance);
 
   if (clueIndex >= 2) {
-    return getLocalLetterClue(word, clueIndex, progress);
+    return getLocalLetterClue(word, clueIndex, progress, language);
   }
 
   try {
-    return await getAiClue(word, clueIndex, bestDistance);
+    return await getAiClue(word, clueIndex, bestDistance, language);
   } catch (error) {
     console.error(error instanceof Error ? error.message : 'ИИ не смог сделать подсказку.');
-    return getLocalLetterClue(word, clueIndex, progress);
+    return getLocalLetterClue(word, clueIndex, progress, language);
   }
 }
 
@@ -658,11 +851,13 @@ export function ConnectionGame({
   onReward,
   onSpendCoins,
   rewardCoins,
+  uiLanguage,
   userEmail,
   isGuest,
 }: ConnectionGameProps) {
-  const savedState = loadConnectionState(userEmail, categoryId);
-  const [targetWord, setTargetWord] = useState(() => savedState?.targetWord ?? pickRandomWord(categoryId));
+  const text = CONNECTION_UI_TEXT[uiLanguage];
+  const savedState = loadConnectionState(userEmail, categoryId, uiLanguage);
+  const [targetWord, setTargetWord] = useState(() => savedState?.targetWord ?? pickRandomWord(categoryId, uiLanguage));
   const [inputWord, setInputWord] = useState(() => savedState?.inputWord ?? '');
   const [history, setHistory] = useState<Guess[]>([]);
   const [lastResult, setLastResult] = useState<LastResult | null>(() => savedState?.lastResult ?? null);
@@ -714,7 +909,7 @@ export function ConnectionGame({
 
   useEffect(() => {
     localStorage.setItem(
-      getConnectionStateKey(userEmail, categoryId),
+      getConnectionStateKey(userEmail, categoryId, uiLanguage),
       JSON.stringify({
         targetWord,
         inputWord,
@@ -724,7 +919,7 @@ export function ConnectionGame({
         shownClues,
       } satisfies SavedConnectionState),
     );
-  }, [categoryId, inputWord, lastResult, message, shownClues, status, targetWord, userEmail]);
+  }, [categoryId, inputWord, lastResult, message, shownClues, status, targetWord, uiLanguage, userEmail]);
 
   async function saveGuestAssociation(word: string, distance: number) {
     const oldHistory = loadGuestHistory(targetWord);
@@ -759,7 +954,7 @@ export function ConnectionGame({
   }
 
   function startNextRound() {
-    setTargetWord((currentWord) => pickRandomWord(categoryId, currentWord));
+    setTargetWord((currentWord) => pickRandomWord(categoryId, uiLanguage, currentWord));
     setInputWord('');
     setLastResult(null);
     setMessage('');
@@ -784,14 +979,14 @@ export function ConnectionGame({
     setMessage('');
 
     try {
-      const clue = await getSmartClue(targetWord, shownClues.length, bestDistance);
+      const clue = await getSmartClue(targetWord, shownClues.length, bestDistance, uiLanguage);
       const shownClueTexts = new Set(shownClues.map(normalizeClueText));
       const nextClue = shownClueTexts.has(normalizeClueText(clue))
-        ? getUniqueLocalLetterClue(targetWord, shownClues.length, getClueProgress(bestDistance), shownClues)
+        ? getUniqueLocalLetterClue(targetWord, shownClues.length, getClueProgress(bestDistance), shownClues, uiLanguage)
         : clue;
 
       if (shownClueTexts.has(normalizeClueText(nextClue))) {
-        setMessage('Все разные подсказки уже открыты.');
+        setMessage(text.noMoreHints);
         return false;
       }
 
@@ -799,7 +994,7 @@ export function ConnectionGame({
       return true;
     } catch (error) {
       console.error(error instanceof Error ? error.message : 'ИИ не смог сделать подсказку.');
-      setMessage('ИИ сейчас недоступен. Проверь Supabase функцию ai и GEMINI_API_KEY.');
+      setMessage(text.aiHintError);
       return false;
     } finally {
       setClueLoading(false);
@@ -808,21 +1003,24 @@ export function ConnectionGame({
 
   async function closeAdAndShowClue() {
     setShowAd(false);
-    await revealNextClue();
+    const clueRevealed = await revealNextClue();
+    if (clueRevealed) {
+      setMessage(text.adHintOpened);
+    }
   }
 
   async function buyClue() {
     if (roundFinished || shownClues.length >= availableCluesCount || clueLoading) return;
 
     if (coins < hintCost) {
-      setMessage(`Нужно ${hintCost} монет для подсказки.`);
+      setMessage(text.needCoins(hintCost));
       return;
     }
 
     const clueRevealed = await revealNextClue();
 
     if (clueRevealed && onSpendCoins()) {
-      setMessage(`Подсказка куплена за ${hintCost} монет.`);
+      setMessage(text.hintBought(hintCost));
     }
   }
 
@@ -850,7 +1048,7 @@ export function ConnectionGame({
       setStatus('won');
       setLastResult(null);
       onReward();
-      setMessage(`Победа! +${rewardCoins} монет.`);
+      setMessage(text.win(rewardCoins));
       setInputWord('');
       setBusy(false);
       return;
@@ -859,10 +1057,10 @@ export function ConnectionGame({
     let distance: number;
 
     try {
-      distance = await getSmartDistance(word, targetWord);
+      distance = await getSmartDistance(word, targetWord, uiLanguage);
     } catch (error) {
       console.error(error instanceof Error ? error.message : 'ИИ не смог сравнить слова.');
-      setMessage('ИИ сейчас недоступен. Без ИИ Association не может сравнить слова по смыслу.');
+      setMessage(text.aiDistanceError);
       setBusy(false);
       return;
     }
@@ -911,35 +1109,32 @@ export function ConnectionGame({
   return (
     <section className="game-shell">
       <div className="game-card">
-        <p className="hello">Игрок: {userEmail}</p>
+        <p className="hello">{text.player}: {userEmail}</p>
         <h2>Association</h2>
-        <p className="game-subtitle">
-          Введи слово. Если это секретное слово, ты выиграешь. Если нет, игра покажет
-          расстояние по смыслу: чем меньше число, тем ближе твоя ассоциация к ответу.
-        </p>
+        <p className="game-subtitle">{text.subtitle}</p>
 
         <p className="guest-note">
-          В словаре {SECRET_WORDS.length} слов. Подсказка открывается после короткой рекламы.
+          {text.dictionary(getAssociationWordCount(uiLanguage))}
         </p>
 
         <p className="currency-note">
-          Баланс: {coins} монет. Победа дает {rewardCoins}, подсказка стоит {hintCost}.
+          {text.balance(coins, rewardCoins, hintCost)}
         </p>
 
         <div className="target-box">
-          <span>Секретное слово</span>
+          <span>{text.secretWord}</span>
           <strong>??????</strong>
         </div>
 
         <form onSubmit={submitWord} className="guess-form">
           <input
-            placeholder="ассоциация или ответ"
+            placeholder={text.input}
             value={inputWord}
             onChange={(e) => setInputWord(e.target.value)}
             disabled={busy || roundFinished}
           />
           <button type="submit" disabled={busy || roundFinished}>
-            {busy ? 'Проверяем...' : 'Проверить'}
+            {busy ? text.checking : text.check}
           </button>
         </form>
 
@@ -950,7 +1145,7 @@ export function ConnectionGame({
             disabled={roundFinished || shownClues.length >= availableCluesCount || coins < hintCost || clueLoading}
             type="button"
           >
-            {clueLoading ? 'Готовим...' : `Подсказка за ${hintCost} монет`}
+            {clueLoading ? text.preparing : text.hintCoins(hintCost)}
           </button>
           <button
             className="soft-button"
@@ -958,10 +1153,10 @@ export function ConnectionGame({
             disabled={roundFinished || shownClues.length >= availableCluesCount || showAd || clueLoading}
             type="button"
           >
-            {clueLoading ? 'Готовим...' : 'Подсказка за рекламу'}
+            {clueLoading ? text.preparing : text.hintAd}
           </button>
           <button className="danger-button" onClick={giveUp} disabled={roundFinished}>
-            Сдаться
+            {text.giveUp}
           </button>
         </div>
 
@@ -981,20 +1176,20 @@ export function ConnectionGame({
           <div className="result-box">
             <span>{lastResult.word}</span>
             <strong>{lastResult.distance}</strong>
-            <p className="result-title">расстояние до секретного слова</p>
+            <p className="result-title">{text.distance}</p>
             <button
               className="meaning-button"
               disabled={meaningLoading}
               onClick={() => toggleWordMeaning(lastResult.word)}
               type="button"
             >
-              {meaningLoading ? 'Ищем...' : 'Значение'}
+              {meaningLoading ? text.searching : text.meaning}
             </button>
             {showWordMeaning && (
               <p className="distance-help">
-                {meaningLoading ? 'Ищем значение в толковом словаре...' : wordMeaning}
+                {meaningLoading ? text.searchingMeaning : wordMeaning}
                 {!meaningLoading && meaningSource && (
-                  <span className="meaning-source">Источник: {meaningSource}</span>
+                  <span className="meaning-source">{text.source}: {meaningSource}</span>
                 )}
               </p>
             )}
@@ -1004,20 +1199,20 @@ export function ConnectionGame({
         {roundFinished && (
           <>
             <div className={status === 'won' ? 'answer-reveal solved' : 'answer-reveal gave-up'}>
-              <span>{status === 'won' ? 'Правильное слово' : 'Ответ был'}</span>
+              <span>{status === 'won' ? text.correctWord : text.answerWas}</span>
               <strong>{targetWord}</strong>
             </div>
             <button className="next-button" onClick={startNextRound}>
-              Новое слово
+              {text.newWord}
             </button>
           </>
         )}
       </div>
 
       <div className="history-panel">
-        <h3>Твои ассоциации</h3>
+        <h3>{text.historyTitle}</h3>
         {history.length === 0 ? (
-          <p className="empty">Пока пусто. Напиши первое слово.</p>
+          <p className="empty">{text.emptyHistory}</p>
         ) : (
           <ul className="history-list">
             {history.map((item) => (
@@ -1030,7 +1225,7 @@ export function ConnectionGame({
         )}
       </div>
 
-      {showAd && <AdModal onClose={closeAdAndShowClue} />}
+      {showAd && <AdModal onClose={closeAdAndShowClue} uiLanguage={uiLanguage} />}
     </section>
   );
 }

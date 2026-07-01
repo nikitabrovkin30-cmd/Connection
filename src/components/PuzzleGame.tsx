@@ -31,8 +31,83 @@ type PuzzleGameProps = {
   onReward: () => void;
   onSpendCoins: () => boolean;
   rewardCoins: number;
+  uiLanguage: 'ru' | 'kk' | 'en';
   userEmail: string;
 };
+
+type UiLanguage = PuzzleGameProps['uiLanguage'];
+
+const PUZZLE_UI_TEXT = {
+  ru: {
+    player: 'Игрок',
+    subtitle: 'Разгадай загадку и напиши ответ одним словом. За правильный ответ дается награда.',
+    difficultyLabel: 'Сложность Puzzle',
+    difficulty: { easy: 'Легко', medium: 'Средне', hard: 'Сложно' },
+    question: 'Загадка',
+    hint: (index: number) => `Подсказка ${index}`,
+    answerPlaceholder: 'ответ',
+    check: 'Проверить',
+    hintCoins: (cost: number) => `Подсказка за ${cost} монет`,
+    hintAd: 'Подсказка за рекламу',
+    giveUp: 'Сдаться',
+    newPuzzle: 'Новая загадка',
+    correctAnswer: 'Правильный ответ',
+    answerWas: 'Ответ был',
+    progress: (solved: number, total: number) => `Разгадано: ${solved}/${total}`,
+    needCoins: (cost: number) => `Нужно ${cost} монет для подсказки.`,
+    hintBought: (cost: number) => `Подсказка куплена за ${cost} монет.`,
+    adHintOpened: 'Реклама просмотрена. Подсказка открыта.',
+    gaveUp: (answer: string) => `Ответ был: ${answer}. Попробуй следующую загадку.`,
+    wrong: 'Пока не то. Попробуй другую ассоциацию.',
+    correct: (answer: string, reward: number) => `Верно! Ответ: ${answer}. +${reward} монет.`,
+  },
+  kk: {
+    player: 'Ойыншы',
+    subtitle: 'Жұмбақты шешіп, жауапты бір сөзбен жаз. Дұрыс жауап үшін сыйлық беріледі.',
+    difficultyLabel: 'Puzzle қиындығы',
+    difficulty: { easy: 'Оңай', medium: 'Орташа', hard: 'Қиын' },
+    question: 'Жұмбақ',
+    hint: (index: number) => `Кеңес ${index}`,
+    answerPlaceholder: 'жауап',
+    check: 'Тексеру',
+    hintCoins: (cost: number) => `${cost} монетаға кеңес`,
+    hintAd: 'Жарнама арқылы кеңес',
+    giveUp: 'Берілу',
+    newPuzzle: 'Жаңа жұмбақ',
+    correctAnswer: 'Дұрыс жауап',
+    answerWas: 'Жауап',
+    progress: (solved: number, total: number) => `Шешілді: ${solved}/${total}`,
+    needCoins: (cost: number) => `Кеңес үшін ${cost} монета керек.`,
+    hintBought: (cost: number) => `Кеңес ${cost} монетаға сатып алынды.`,
+    adHintOpened: 'Жарнама қаралды. Кеңес ашылды.',
+    gaveUp: (answer: string) => `Жауап: ${answer}. Келесі жұмбақты байқап көр.`,
+    wrong: 'Әзірге дұрыс емес. Басқа жауапты байқап көр.',
+    correct: (answer: string, reward: number) => `Дұрыс! Жауап: ${answer}. +${reward} монета.`,
+  },
+  en: {
+    player: 'Player',
+    subtitle: 'Solve the riddle and write the answer as one word. A correct answer gives a reward.',
+    difficultyLabel: 'Puzzle difficulty',
+    difficulty: { easy: 'Easy', medium: 'Medium', hard: 'Hard' },
+    question: 'Riddle',
+    hint: (index: number) => `Hint ${index}`,
+    answerPlaceholder: 'answer',
+    check: 'Check',
+    hintCoins: (cost: number) => `Hint for ${cost} coins`,
+    hintAd: 'Hint for ad',
+    giveUp: 'Give up',
+    newPuzzle: 'New riddle',
+    correctAnswer: 'Correct answer',
+    answerWas: 'Answer was',
+    progress: (solved: number, total: number) => `Solved: ${solved}/${total}`,
+    needCoins: (cost: number) => `You need ${cost} coins for a hint.`,
+    hintBought: (cost: number) => `Hint bought for ${cost} coins.`,
+    adHintOpened: 'Ad watched. Hint opened.',
+    gaveUp: (answer: string) => `Answer was: ${answer}. Try the next riddle.`,
+    wrong: 'Not yet. Try another association.',
+    correct: (answer: string, reward: number) => `Correct! Answer: ${answer}. +${reward} coins.`,
+  },
+} as const;
 
 const PUZZLE_STATE_PREFIX = 'puzzle_game_state';
 
@@ -615,11 +690,67 @@ const HARD_PUZZLES: readonly Puzzle[] = [
   },
 ];
 
-const PUZZLES_BY_DIFFICULTY: Record<PuzzleDifficulty, readonly Puzzle[]> = {
-  easy: EASY_PUZZLES,
-  medium: MEDIUM_PUZZLES,
-  hard: HARD_PUZZLES,
+const ENGLISH_PUZZLES: Record<PuzzleDifficulty, readonly Puzzle[]> = {
+  easy: [
+    { id: 'en-shadow', question: 'It follows you in the light, but disappears in the dark. What is it?', answers: ['shadow'], hint: 'You see it when something blocks light.' },
+    { id: 'en-clock', question: 'It stands still, but tells you where the day is going. What is it?', answers: ['clock', 'watch'], hint: 'It has hands or numbers.' },
+    { id: 'en-mirror', question: 'It shows your face, but never speaks. What is it?', answers: ['mirror'], hint: 'You often find it in a bathroom.' },
+    { id: 'en-key', question: 'Small in your hand, but it can open a whole room. What is it?', answers: ['key'], hint: 'It works with a lock.' },
+    { id: 'en-rain', question: 'It falls from clouds and wakes the ground. What is it?', answers: ['rain'], hint: 'You may need an umbrella.' },
+  ],
+  medium: [
+    { id: 'en-candle', question: 'The longer it works, the shorter it becomes. What is it?', answers: ['candle'], hint: 'It gives light with a flame.' },
+    { id: 'en-map', question: 'It shows roads and cities, but never travels. What is it?', answers: ['map'], hint: 'Travelers use it to find a route.' },
+    { id: 'en-battery', question: 'While it has energy, a device lives; when it is empty, the device sleeps. What is it?', answers: ['battery'], hint: 'You charge it.' },
+    { id: 'en-window', question: 'It lets light come in, but keeps the weather outside. What is it?', answers: ['window'], hint: 'It is often made of glass.' },
+    { id: 'en-wallet', question: 'It is small, often folded, and guards money. What is it?', answers: ['wallet'], hint: 'People keep cards in it too.' },
+  ],
+  hard: [
+    { id: 'en-secret', question: 'When it is kept, it is yours; when it is told, it belongs to others too. What is it?', answers: ['secret'], hint: 'You whisper it carefully.' },
+    { id: 'en-memory', question: 'It has no weight, but can carry a whole childhood. What is it?', answers: ['memory'], hint: 'It lives in your mind.' },
+    { id: 'en-echo', question: 'It answers you, but never starts the conversation. What is it?', answers: ['echo'], hint: 'Mountains and empty halls can make it.' },
+    { id: 'en-time', question: 'You spend it, lose it, and wait for it, but cannot hold it. What is it?', answers: ['time'], hint: 'Clocks measure it.' },
+    { id: 'en-idea', question: 'It can appear in silence and change what someone builds. What is it?', answers: ['idea'], hint: 'It begins in the head.' },
+  ],
 };
+
+const KAZAKH_PUZZLES: Record<PuzzleDifficulty, readonly Puzzle[]> = {
+  easy: [
+    { id: 'kk-shadow', question: 'Жарықта артыңнан жүреді, қараңғыда жоғалады. Бұл не?', answers: ['көлеңке'], hint: 'Жарық бір нәрсеге түскенде пайда болады.' },
+    { id: 'kk-clock', question: 'Өзі орнында тұрады, бірақ уақытты көрсетеді. Бұл не?', answers: ['сағат'], hint: 'Онда сандар немесе тілдер болады.' },
+    { id: 'kk-mirror', question: 'Сені көрсетеді, бірақ сөйлемейді. Бұл не?', answers: ['айна'], hint: 'Оған қарағанда өзіңді көресің.' },
+    { id: 'kk-key', question: 'Кішкентай ғана, бірақ есік ашады. Бұл не?', answers: ['кілт'], hint: 'Құлыппен бірге қолданылады.' },
+    { id: 'kk-rain', question: 'Бұлттан түсіп, жерді суландырады. Бұл не?', answers: ['жаңбыр'], hint: 'Ол кезде қолшатыр керек болуы мүмкін.' },
+  ],
+  medium: [
+    { id: 'kk-candle', question: 'Жанған сайын өзі қысқарады. Бұл не?', answers: ['шам'], hint: 'Жарық береді.' },
+    { id: 'kk-map', question: 'Қалалар мен жолдарды көрсетеді, бірақ өзі жүрмейді. Бұл не?', answers: ['карта'], hint: 'Жол табуға көмектеседі.' },
+    { id: 'kk-battery', question: 'Қуаты барда зат жұмыс істейді, қуаты бітсе тоқтайды. Бұл не?', answers: ['батарея'], hint: 'Оны зарядтауға болады.' },
+    { id: 'kk-window', question: 'Жарықты кіргізеді, ал суықты сыртта ұстайды. Бұл не?', answers: ['терезе'], hint: 'Көбіне әйнектен жасалады.' },
+    { id: 'kk-wallet', question: 'Кішкентай, бүктеледі, ақша сақтайды. Бұл не?', answers: ['әмиян'], hint: 'Ішінде карта да болуы мүмкін.' },
+  ],
+  hard: [
+    { id: 'kk-secret', question: 'Іште сақталса сенікі, айтылса ортақ болады. Бұл не?', answers: ['құпия'], hint: 'Оны ақырын айтады.' },
+    { id: 'kk-memory', question: 'Салмағы жоқ, бірақ бүкіл балалық шақты сақтай алады. Бұл не?', answers: ['естелік'], hint: 'Ол санада өмір сүреді.' },
+    { id: 'kk-echo', question: 'Өзі бірінші сөйлемейді, бірақ саған жауап береді. Бұл не?', answers: ['жаңғырық'], hint: 'Тау мен бос залда естіледі.' },
+    { id: 'kk-time', question: 'Оны күтесің, жоғалтасың, жұмсайсың, бірақ ұстай алмайсың. Бұл не?', answers: ['уақыт'], hint: 'Оны сағат өлшейді.' },
+    { id: 'kk-idea', question: 'Тыныштықта пайда болып, үлкен нәрсе салуға себеп болады. Бұл не?', answers: ['идея'], hint: 'Ол басыңда туады.' },
+  ],
+};
+
+const PUZZLES_BY_LANGUAGE: Record<UiLanguage, Record<PuzzleDifficulty, readonly Puzzle[]>> = {
+  ru: {
+    easy: EASY_PUZZLES,
+    medium: MEDIUM_PUZZLES,
+    hard: HARD_PUZZLES,
+  },
+  kk: KAZAKH_PUZZLES,
+  en: ENGLISH_PUZZLES,
+};
+
+function getPuzzles(language: UiLanguage, difficulty: PuzzleDifficulty) {
+  return PUZZLES_BY_LANGUAGE[language][difficulty];
+}
 
 function getMaxPuzzleHints(difficulty: PuzzleDifficulty) {
   return difficulty === 'hard' ? 2 : 1;
@@ -831,42 +962,68 @@ function getAcceptedPuzzleAnswers(puzzle: Puzzle) {
   return [...puzzle.answers, ...(ALTERNATE_PUZZLE_ANSWERS[puzzle.id] ?? [])];
 }
 
-function getLetterHint(answer: string) {
+function getLetterHint(answer: string, language: UiLanguage) {
   const normalizedAnswer = normalizeAnswer(answer);
+  if (language === 'en') {
+    return `The answer starts with "${normalizedAnswer[0]}" and has ${normalizedAnswer.length} letters.`;
+  }
+  if (language === 'kk') {
+    return `Жауап "${normalizedAnswer[0]}" әрпінен басталады және ${normalizedAnswer.length} әріптен тұрады.`;
+  }
   return `Ответ начинается на "${normalizedAnswer[0]}" и состоит из ${normalizedAnswer.length} букв.`;
 }
 
-function getEndingHint(answer: string) {
+function getEndingHint(answer: string, language: UiLanguage) {
   const normalizedAnswer = normalizeAnswer(answer);
+  if (language === 'en') {
+    return `The last letter is "${normalizedAnswer[normalizedAnswer.length - 1]}".`;
+  }
+  if (language === 'kk') {
+    return `Соңғы әріп - "${normalizedAnswer[normalizedAnswer.length - 1]}".`;
+  }
   return `Последняя буква ответа - "${normalizedAnswer[normalizedAnswer.length - 1]}".`;
 }
 
-function getVowelHint(answer: string) {
+function getVowelHint(answer: string, language: UiLanguage) {
   const normalizedAnswer = normalizeAnswer(answer);
+  if (language === 'en') {
+    const vowelCount = normalizedAnswer.match(/[aeiou]/g)?.length ?? 0;
+    return `The answer has ${vowelCount} vowel${vowelCount === 1 ? '' : 's'}.`;
+  }
+  if (language === 'kk') {
+    const vowelCount = normalizedAnswer.match(/[аәеёиоөұүуыіэюя]/g)?.length ?? 0;
+    return `Жауапта ${vowelCount} дауысты әріп бар.`;
+  }
   const vowelCount = normalizedAnswer.match(/[аеёиоуыэюя]/g)?.length ?? 0;
   return `В ответе ${vowelCount} ${vowelCount === 1 ? 'гласная' : vowelCount > 1 && vowelCount < 5 ? 'гласные' : 'гласных'}.`;
 }
 
-function getPatternHint(answer: string) {
+function getPatternHint(answer: string, language: UiLanguage) {
   const letters = Array.from(normalizeAnswer(answer));
   const pattern = letters
     .map((letter, index) => (index === 0 || index === letters.length - 1 || index % 3 === 1 ? letter : '_'))
     .join(' ');
 
+  if (language === 'en') {
+    return `Part of the word: ${pattern}.`;
+  }
+  if (language === 'kk') {
+    return `Сөздің бір бөлігі: ${pattern}.`;
+  }
   return `Часть слова: ${pattern}.`;
 }
 
-function getPuzzleHints(puzzle: Puzzle, difficulty: PuzzleDifficulty) {
+function getPuzzleHints(puzzle: Puzzle, difficulty: PuzzleDifficulty, language: UiLanguage) {
   const uniqueHints: string[] = [];
   const seenHints = new Set<string>();
 
   [
     puzzle.hint,
     ...(EXTRA_PUZZLE_HINTS[puzzle.id] ?? []),
-    getLetterHint(puzzle.answers[0]),
-    getEndingHint(puzzle.answers[0]),
-    getVowelHint(puzzle.answers[0]),
-    getPatternHint(puzzle.answers[0]),
+    getLetterHint(puzzle.answers[0], language),
+    getEndingHint(puzzle.answers[0], language),
+    getVowelHint(puzzle.answers[0], language),
+    getPatternHint(puzzle.answers[0], language),
   ].forEach((hint) => {
     const normalizedHint = normalizeHint(hint);
     if (seenHints.has(normalizedHint)) return;
@@ -878,8 +1035,8 @@ function getPuzzleHints(puzzle: Puzzle, difficulty: PuzzleDifficulty) {
   return uniqueHints.slice(0, getMaxPuzzleHints(difficulty));
 }
 
-function getPuzzleStateKey(userEmail: string, difficulty: PuzzleDifficulty) {
-  return `${PUZZLE_STATE_PREFIX}_${userEmail}_${difficulty}`;
+function getPuzzleStateKey(userEmail: string, difficulty: PuzzleDifficulty, language: UiLanguage) {
+  return `${PUZZLE_STATE_PREFIX}_${userEmail}_${language}_${difficulty}`;
 }
 
 function pickPuzzle(puzzles: readonly Puzzle[], solvedIds: Set<string>, currentId?: string) {
@@ -893,8 +1050,8 @@ function findSavedPuzzle(puzzles: readonly Puzzle[], puzzleId?: string) {
   return puzzles.find((puzzle) => puzzle.id === puzzleId);
 }
 
-function loadPuzzleState(userEmail: string, difficulty: PuzzleDifficulty): SavedPuzzleState | null {
-  const saved = localStorage.getItem(getPuzzleStateKey(userEmail, difficulty));
+function loadPuzzleState(userEmail: string, difficulty: PuzzleDifficulty, language: UiLanguage): SavedPuzzleState | null {
+  const saved = localStorage.getItem(getPuzzleStateKey(userEmail, difficulty, language));
   if (!saved) return null;
 
   try {
@@ -928,9 +1085,9 @@ function loadPuzzleState(userEmail: string, difficulty: PuzzleDifficulty): Saved
   }
 }
 
-function createInitialPuzzleState(userEmail: string, difficulty: PuzzleDifficulty) {
-  const puzzles = PUZZLES_BY_DIFFICULTY[difficulty];
-  const savedState = loadPuzzleState(userEmail, difficulty);
+function createInitialPuzzleState(userEmail: string, difficulty: PuzzleDifficulty, language: UiLanguage) {
+  const puzzles = getPuzzles(language, difficulty);
+  const savedState = loadPuzzleState(userEmail, difficulty, language);
   const solvedIds = new Set(savedState?.solvedIds ?? []);
   const puzzle = findSavedPuzzle(puzzles, savedState?.puzzleId) ?? pickPuzzle(puzzles, solvedIds);
 
@@ -944,9 +1101,10 @@ function createInitialPuzzleState(userEmail: string, difficulty: PuzzleDifficult
   };
 }
 
-export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoins, userEmail }: PuzzleGameProps) {
+export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoins, uiLanguage, userEmail }: PuzzleGameProps) {
+  const text = PUZZLE_UI_TEXT[uiLanguage];
   const [difficulty, setDifficulty] = useState<PuzzleDifficulty>('easy');
-  const initialState = useMemo(() => createInitialPuzzleState(userEmail, difficulty), [difficulty, userEmail]);
+  const initialState = useMemo(() => createInitialPuzzleState(userEmail, difficulty, uiLanguage), [difficulty, uiLanguage, userEmail]);
 
   const [puzzle, setPuzzle] = useState<Puzzle>(initialState.puzzle);
   const [inputAnswer, setInputAnswer] = useState(initialState.inputAnswer);
@@ -956,14 +1114,14 @@ export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoin
   const [status, setStatus] = useState<PuzzleStatus>(initialState.status);
   const [showAd, setShowAd] = useState(false);
 
-  const puzzles = PUZZLES_BY_DIFFICULTY[difficulty];
+  const puzzles = getPuzzles(uiLanguage, difficulty);
   const roundFinished = status !== 'playing';
-  const puzzleHints = getPuzzleHints(puzzle, difficulty);
+  const puzzleHints = getPuzzleHints(puzzle, difficulty, uiLanguage);
   const shownHints = puzzleHints.slice(0, revealedHints);
   const hasMoreHints = revealedHints < puzzleHints.length;
 
   useEffect(() => {
-    const nextState = createInitialPuzzleState(userEmail, difficulty);
+    const nextState = createInitialPuzzleState(userEmail, difficulty, uiLanguage);
     setPuzzle(nextState.puzzle);
     setInputAnswer(nextState.inputAnswer);
     setMessage(nextState.message);
@@ -971,11 +1129,11 @@ export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoin
     setRevealedHints(nextState.revealedHints);
     setStatus(nextState.status);
     setShowAd(false);
-  }, [difficulty, userEmail]);
+  }, [difficulty, uiLanguage, userEmail]);
 
   useEffect(() => {
     localStorage.setItem(
-      getPuzzleStateKey(userEmail, difficulty),
+      getPuzzleStateKey(userEmail, difficulty, uiLanguage),
       JSON.stringify({
         puzzleId: puzzle.id,
         inputAnswer,
@@ -985,7 +1143,7 @@ export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoin
         status,
       } satisfies SavedPuzzleState),
     );
-  }, [difficulty, inputAnswer, message, puzzle.id, revealedHints, solvedIds, status, userEmail]);
+  }, [difficulty, inputAnswer, message, puzzle.id, revealedHints, solvedIds, status, uiLanguage, userEmail]);
 
   function startNextPuzzle() {
     const nextPuzzle = pickPuzzle(puzzles, solvedIds, puzzle.id);
@@ -1006,12 +1164,12 @@ export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoin
     if (!hasMoreHints || roundFinished) return;
 
     if (coins < hintCost || !onSpendCoins()) {
-      setMessage(`Нужно ${hintCost} монет для подсказки.`);
+      setMessage(text.needCoins(hintCost));
       return;
     }
 
     revealNextHint();
-    setMessage(`Подсказка куплена за ${hintCost} монет.`);
+    setMessage(text.hintBought(hintCost));
   }
 
   function openAdForHint() {
@@ -1022,7 +1180,7 @@ export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoin
   function closeAdAndRevealHint() {
     setShowAd(false);
     revealNextHint();
-    setMessage('Реклама просмотрена. Подсказка открыта.');
+    setMessage(text.adHintOpened);
   }
 
   function giveUp() {
@@ -1030,7 +1188,7 @@ export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoin
     setStatus('gave-up');
     setInputAnswer('');
     setShowAd(false);
-    setMessage(`Ответ был: ${puzzle.answers[0]}. Попробуй следующую загадку.`);
+    setMessage(text.gaveUp(puzzle.answers[0]));
   }
 
   function submitAnswer(e: FormEvent<HTMLFormElement>) {
@@ -1042,7 +1200,7 @@ export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoin
     const correct = getAcceptedPuzzleAnswers(puzzle).some((answer) => normalizeAnswer(answer) === normalizedAnswer);
 
     if (!correct) {
-      setMessage('Пока не то. Попробуй другую ассоциацию.');
+      setMessage(text.wrong);
       return;
     }
 
@@ -1054,19 +1212,17 @@ export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoin
       return nextSolvedIds;
     });
     setStatus('solved');
-    setMessage(`Верно! Ответ: ${puzzle.answers[0]}. +${rewardCoins} монет.`);
+    setMessage(text.correct(puzzle.answers[0], rewardCoins));
   }
 
   return (
     <section className="puzzle-shell">
       <div className="game-card puzzle-card">
-        <p className="hello">Игрок: {userEmail}</p>
+        <p className="hello">{text.player}: {userEmail}</p>
         <h2>Puzzle</h2>
-        <p className="game-subtitle">
-          Разгадай загадку и напиши ответ одним словом. За правильный ответ дается награда.
-        </p>
+        <p className="game-subtitle">{text.subtitle}</p>
 
-        <div className="puzzle-difficulties" aria-label="Сложность Puzzle">
+        <div className="puzzle-difficulties" aria-label={text.difficultyLabel}>
           {PUZZLE_DIFFICULTIES.map((option) => (
             <button
               className={difficulty === option.id ? 'difficulty-button active' : 'difficulty-button'}
@@ -1074,19 +1230,19 @@ export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoin
               onClick={() => setDifficulty(option.id)}
               type="button"
             >
-              {option.title}
+              {text.difficulty[option.id]}
             </button>
           ))}
         </div>
 
         <div className="puzzle-question">
-          <span>Загадка</span>
+          <span>{text.question}</span>
           <strong>{puzzle.question}</strong>
         </div>
 
         {shownHints.map((hint, index) => (
           <p className="puzzle-hint" key={`${puzzle.id}-${index}`}>
-            Подсказка {index + 1}: {hint}
+            {text.hint(index + 1)}: {hint}
           </p>
         ))}
 
@@ -1097,11 +1253,11 @@ export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoin
               setInputAnswer(e.target.value);
               setMessage('');
             }}
-            placeholder="ответ"
+            placeholder={text.answerPlaceholder}
             value={inputAnswer}
           />
           <button disabled={roundFinished} type="submit">
-            Проверить
+            {text.check}
           </button>
         </form>
 
@@ -1112,7 +1268,7 @@ export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoin
             onClick={buyHint}
             type="button"
           >
-            Подсказка за {hintCost} монет
+            {text.hintCoins(hintCost)}
           </button>
           <button
             className="ad-button"
@@ -1120,23 +1276,23 @@ export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoin
             onClick={openAdForHint}
             type="button"
           >
-            Подсказка за рекламу
+            {text.hintAd}
           </button>
           {!roundFinished && (
             <button className="danger-button" onClick={giveUp} type="button">
-              Сдаться
+              {text.giveUp}
             </button>
           )}
           {roundFinished && (
             <button className="next-button" onClick={startNextPuzzle} type="button">
-              Новая загадка
+              {text.newPuzzle}
             </button>
           )}
         </div>
 
         {roundFinished && (
           <div className={status === 'solved' ? 'puzzle-answer-reveal solved' : 'puzzle-answer-reveal gave-up'}>
-            <span>{status === 'solved' ? 'Правильный ответ' : 'Ответ был'}</span>
+            <span>{status === 'solved' ? text.correctAnswer : text.answerWas}</span>
             <strong>{puzzle.answers[0]}</strong>
           </div>
         )}
@@ -1144,11 +1300,11 @@ export function PuzzleGame({ coins, hintCost, onReward, onSpendCoins, rewardCoin
         {message && <p className={status === 'solved' ? 'success-message' : 'message'}>{message}</p>}
 
         <p className="puzzle-progress">
-          Разгадано: {solvedIds.size}/{puzzles.length}
+          {text.progress(solvedIds.size, puzzles.length)}
         </p>
       </div>
 
-      {showAd && <AdModal onClose={closeAdAndRevealHint} />}
+      {showAd && <AdModal onClose={closeAdAndRevealHint} uiLanguage={uiLanguage} />}
     </section>
   );
 }

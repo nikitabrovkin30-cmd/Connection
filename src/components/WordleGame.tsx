@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { AdModal } from './AdModal';
 
 type WordLength = 4 | 5 | 6;
-type WordleLanguage = 'ru' | 'kk';
+type WordleLanguage = 'ru' | 'kk' | 'en';
 type WordleMode = 'classic' | 'daily' | 'campaign';
 type TileStatus = 'correct' | 'present' | 'absent';
 type LetterStatus = TileStatus | 'unused';
@@ -44,8 +44,108 @@ type WordleGameProps = {
   onReward: () => void;
   onSpendCoins: () => boolean;
   rewardCoins: number;
+  uiLanguage: 'ru' | 'kk' | 'en';
   userEmail: string;
 };
+
+const WORDLE_UI_TEXT = {
+  ru: {
+    player: 'Игрок',
+    subtitle: 'Кликни по таблице и печатай буквы прямо в неё. Enter проверяет слово, Backspace стирает букву.',
+    balance: (coins: number, reward: number, cost: number) => `Баланс: ${coins} монет. Победа дает ${reward}, подсказка стоит ${cost}.`,
+    languageLabel: 'Выбор языка Wordle',
+    lengthLabel: 'Длина слова',
+    letters: 'букв',
+    daily: 'Слово дня',
+    campaign: 'Прохождение',
+    level: (level: number, total: number, length: number) => `Уровень ${level}/${total}. Длина слова: ${length} букв.`,
+    boardLabel: 'Поле ввода Wordle',
+    inputLabel: 'Ввод слова Wordle',
+    letterList: 'Список букв',
+    erase: 'Стереть',
+    checking: 'Проверяем...',
+    check: 'Проверить',
+    hint: (cost: number) => `Подсказка ${cost}`,
+    ad: 'Реклама',
+    correctWord: 'Правильное слово',
+    wordWas: 'Слово было',
+    dailyFinished: (time: string) => `Слово дня уже сыграно. Новое откроется через ${time}.`,
+    nextLevel: 'Следующий уровень',
+    retryLevel: 'Повторить уровень',
+    newWord: 'Новое слово',
+    adHint: (index: number, letter: string) => `Реклама просмотрена. Подсказка: буква ${index} - "${letter}".`,
+    needCoins: (cost: number) => `Нужно ${cost} монет для подсказки.`,
+    boughtHint: (cost: number, index: number, letter: string) => `Подсказка куплена за ${cost} монет: буква ${index} - "${letter}".`,
+    needLetters: (length: number) => `Нужно слово из ${length} букв.`,
+    aiWordError: 'ИИ недоступен, а такого слова нет в локальном словаре игры.',
+    campaignWon: (level: number, word: string, reward: number) => `Уровень ${level} пройден! Слово: ${word}. +${reward} монет.`,
+    won: (word: string, reward: number) => `Победа! Слово: ${word}. +${reward} монет.`,
+  },
+  kk: {
+    player: 'Ойыншы',
+    subtitle: 'Кестені басып, әріптерді тікелей енгіз. Enter сөзді тексереді, Backspace әріпті өшіреді.',
+    balance: (coins: number, reward: number, cost: number) => `Баланс: ${coins} монета. Жеңіс ${reward} береді, кеңес ${cost} тұрады.`,
+    languageLabel: 'Wordle тілін таңдау',
+    lengthLabel: 'Сөз ұзындығы',
+    letters: 'әріп',
+    daily: 'Күн сөзі',
+    campaign: 'Өту режимі',
+    level: (level: number, total: number, length: number) => `Деңгей ${level}/${total}. Сөз ұзындығы: ${length} әріп.`,
+    boardLabel: 'Wordle енгізу өрісі',
+    inputLabel: 'Wordle сөзі',
+    letterList: 'Әріптер тізімі',
+    erase: 'Өшіру',
+    checking: 'Тексерілуде...',
+    check: 'Тексеру',
+    hint: (cost: number) => `Кеңес ${cost}`,
+    ad: 'Жарнама',
+    correctWord: 'Дұрыс сөз',
+    wordWas: 'Сөз',
+    dailyFinished: (time: string) => `Күн сөзі ойналды. Жаңа сөз ${time} кейін ашылады.`,
+    nextLevel: 'Келесі деңгей',
+    retryLevel: 'Деңгейді қайталау',
+    newWord: 'Жаңа сөз',
+    adHint: (index: number, letter: string) => `Жарнама қаралды. Кеңес: ${index}-әріп - "${letter}".`,
+    needCoins: (cost: number) => `Кеңес үшін ${cost} монета керек.`,
+    boughtHint: (cost: number, index: number, letter: string) => `Кеңес ${cost} монетаға сатып алынды: ${index}-әріп - "${letter}".`,
+    needLetters: (length: number) => `${length} әріптен тұратын сөз керек.`,
+    aiWordError: 'ИИ қолжетімсіз, ал бұл сөз ойынның жергілікті сөздігінде жоқ.',
+    campaignWon: (level: number, word: string, reward: number) => `${level}-деңгей өтті! Сөз: ${word}. +${reward} монета.`,
+    won: (word: string, reward: number) => `Жеңіс! Сөз: ${word}. +${reward} монета.`,
+  },
+  en: {
+    player: 'Player',
+    subtitle: 'Tap the board and type letters into it. Enter checks the word, Backspace removes a letter.',
+    balance: (coins: number, reward: number, cost: number) => `Balance: ${coins} coins. A win gives ${reward}, a hint costs ${cost}.`,
+    languageLabel: 'Wordle language',
+    lengthLabel: 'Word length',
+    letters: 'letters',
+    daily: 'Daily word',
+    campaign: 'Campaign',
+    level: (level: number, total: number, length: number) => `Level ${level}/${total}. Word length: ${length} letters.`,
+    boardLabel: 'Wordle input board',
+    inputLabel: 'Wordle word input',
+    letterList: 'Letter list',
+    erase: 'Erase',
+    checking: 'Checking...',
+    check: 'Check',
+    hint: (cost: number) => `Hint ${cost}`,
+    ad: 'Ad',
+    correctWord: 'Correct word',
+    wordWas: 'Word was',
+    dailyFinished: (time: string) => `Daily word already played. New word opens in ${time}.`,
+    nextLevel: 'Next level',
+    retryLevel: 'Retry level',
+    newWord: 'New word',
+    adHint: (index: number, letter: string) => `Ad watched. Hint: letter ${index} - "${letter}".`,
+    needCoins: (cost: number) => `You need ${cost} coins for a hint.`,
+    boughtHint: (cost: number, index: number, letter: string) => `Hint bought for ${cost} coins: letter ${index} - "${letter}".`,
+    needLetters: (length: number) => `You need a ${length}-letter word.`,
+    aiWordError: 'AI is unavailable, and this word is not in the local game dictionary.',
+    campaignWon: (level: number, word: string, reward: number) => `Level ${level} complete! Word: ${word}. +${reward} coins.`,
+    won: (word: string, reward: number) => `Win! Word: ${word}. +${reward} coins.`,
+  },
+} as const;
 
 const MAX_ATTEMPTS = 6;
 const CAMPAIGN_LEVEL_COUNT = 2000;
@@ -56,10 +156,12 @@ const WORDLE_VALIDATION_CACHE_PREFIX = 'wordle_ai_validation';
 const WORDLE_LOCAL_LEARNED_WORDS_KEY = 'wordle_local_learned_words';
 const RUSSIAN_ALPHABET = Array.from('абвгдежзийклмнопрстуфхцчшщъыьэюя');
 const KAZAKH_ALPHABET = Array.from('аәбвгғдеёжзийкқлмнңоөпрстуұүфхһцчшщъыіьэюя');
-const WORDLE_LANGUAGES: readonly { id: WordleLanguage; title: string }[] = [
-  { id: 'ru', title: 'Русский' },
-  { id: 'kk', title: 'Қазақша' },
-];
+const ENGLISH_ALPHABET = Array.from('abcdefghijklmnopqrstuvwxyz');
+function getWordleLanguageFromUi(uiLanguage: 'ru' | 'kk' | 'en'): WordleLanguage {
+  if (uiLanguage === 'kk') return 'kk';
+  if (uiLanguage === 'en') return 'en';
+  return 'ru';
+}
 
 const WORDS: Record<WordLength, string[]> = {
   4: [
@@ -240,21 +342,55 @@ const WORDLE_TARGET_WORDS: Record<WordLength, Set<string>> = {
 
 const KAZAKH_TARGET_WORDS = createKazakhTargetWords();
 
+const ENGLISH_WORDS: Record<WordLength, string[]> = {
+  4: [
+    'game', 'word', 'play', 'time', 'star', 'moon', 'tree', 'fish', 'bird', 'wolf',
+    'book', 'door', 'lamp', 'road', 'rain', 'snow', 'wind', 'fire', 'rock', 'sand',
+    'ship', 'king', 'ring', 'gold', 'coin', 'desk', 'milk', 'cake', 'leaf', 'seed',
+    'frog', 'bear', 'lion', 'duck', 'goat', 'hand', 'face', 'home', 'room', 'city',
+    'song', 'note', 'ball', 'shoe', 'coat', 'boat', 'bike', 'bell', 'card', 'gift',
+  ],
+  5: [
+    'apple', 'brain', 'chair', 'table', 'house', 'water', 'earth', 'cloud', 'storm', 'grass',
+    'plant', 'stone', 'river', 'ocean', 'horse', 'tiger', 'zebra', 'mouse', 'snake', 'eagle',
+    'bread', 'sugar', 'honey', 'lemon', 'grape', 'music', 'piano', 'phone', 'watch', 'paper',
+    'pencil', 'brush', 'light', 'glass', 'plate', 'spoon', 'knife', 'shirt', 'train', 'plane',
+    'smile', 'dream', 'quest', 'logic', 'riddle', 'magic', 'level', 'world', 'field', 'beach',
+  ],
+  6: [
+    'planet', 'flower', 'forest', 'island', 'valley', 'desert', 'winter', 'summer', 'animal', 'rabbit',
+    'monkey', 'donkey', 'turkey', 'turtle', 'dragon', 'bottle', 'camera', 'guitar', 'basket', 'pillow',
+    'window', 'school', 'castle', 'bridge', 'garden', 'market', 'museum', 'rocket', 'ticket', 'wallet',
+    'screen', 'button', 'letter', 'answer', 'secret', 'puzzle', 'memory', 'friend', 'family', 'doctor',
+    'cookie', 'cheese', 'orange', 'tomato', 'carrot', 'pepper', 'silver', 'circle', 'square', 'yellow',
+  ],
+};
+
+const ENGLISH_TARGET_WORDS: Record<WordLength, Set<string>> = {
+  4: new Set(ENGLISH_WORDS[4]),
+  5: new Set(ENGLISH_WORDS[5]),
+  6: new Set(ENGLISH_WORDS[6]),
+};
+
 const WORDLE_TARGET_WORDS_BY_LANGUAGE: Record<WordleLanguage, Record<WordLength, Set<string>>> = {
   ru: WORDLE_TARGET_WORDS,
   kk: KAZAKH_TARGET_WORDS,
+  en: ENGLISH_TARGET_WORDS,
 };
 
 const WORDLE_SOURCE_WORDS_BY_LANGUAGE: Record<WordleLanguage, Record<WordLength, string[]>> = {
   ru: WORDS,
   kk: KAZAKH_WORDS,
+  en: ENGLISH_WORDS,
 };
 
 const RARE_LETTERS = new Set(Array.from('фхцчшщъыэюяь'));
+const RARE_ENGLISH_LETTERS = new Set(Array.from('jqxz'));
 
-function getWordDifficulty(word: string) {
+function getWordDifficulty(word: string, language: WordleLanguage = 'ru') {
   const letters = Array.from(word);
-  const rareScore = letters.filter((letter) => RARE_LETTERS.has(letter)).length * 9;
+  const rareLetters = language === 'en' ? RARE_ENGLISH_LETTERS : RARE_LETTERS;
+  const rareScore = letters.filter((letter) => rareLetters.has(letter)).length * 9;
   const uniqueScore = new Set(letters).size * 3;
   const repeatPenalty = (letters.length - new Set(letters).size) * -4;
 
@@ -271,8 +407,8 @@ function getAllowedWords(language: WordleLanguage, length: WordLength) {
 
 function getSortedTargetWords(language: WordleLanguage, length: WordLength) {
   return Array.from(getTargetWords(language, length)).sort((firstWord, secondWord) => (
-    getWordDifficulty(firstWord) - getWordDifficulty(secondWord) ||
-    firstWord.localeCompare(secondWord, language === 'kk' ? 'kk' : 'ru')
+    getWordDifficulty(firstWord, language) - getWordDifficulty(secondWord, language) ||
+    firstWord.localeCompare(secondWord, language === 'kk' ? 'kk' : language === 'en' ? 'en' : 'ru')
   ));
 }
 
@@ -286,6 +422,11 @@ const CAMPAIGN_WORDS_BY_LANGUAGE: Record<WordleLanguage, Record<WordLength, stri
     4: getSortedTargetWords('kk', 4),
     5: getSortedTargetWords('kk', 5),
     6: getSortedTargetWords('kk', 6),
+  },
+  en: {
+    4: getSortedTargetWords('en', 4),
+    5: getSortedTargetWords('en', 5),
+    6: getSortedTargetWords('en', 6),
   },
 };
 
@@ -313,14 +454,17 @@ function getCampaignWord(level: number, language: WordleLanguage) {
 
 function normalizeDictionaryWord(value: string, language: WordleLanguage = 'ru') {
   const normalizedValue = value.trim().toLowerCase();
+  if (language === 'en') return normalizedValue;
   return language === 'ru' ? normalizedValue.replace(/ё/g, 'е') : normalizedValue;
 }
 
 function getLanguagePattern(language: WordleLanguage) {
+  if (language === 'en') return /^[a-z]+$/;
   return language === 'kk' ? /^[а-яәғқңөұүһіё]+$/ : /^[а-я]+$/;
 }
 
 function getInputCleanupPattern(language: WordleLanguage) {
+  if (language === 'en') return /[^a-z]/g;
   return language === 'kk' ? /[^а-яәғқңөұүһіё]/g : /[^а-я]/g;
 }
 
@@ -338,7 +482,7 @@ function addWordForms(target: Record<WordLength, Set<string>>, word: string, lan
   if (!getLanguagePattern(language).test(normalizedWord)) return;
 
   addWordByLength(target, normalizedWord, language);
-  if (language === 'kk') return;
+  if (language === 'kk' || language === 'en') return;
 
   const lastLetter = normalizedWord[normalizedWord.length - 1];
   const withoutLastLetter = normalizedWord.slice(0, -1);
@@ -479,6 +623,7 @@ function createWordleAllowedWords(language: WordleLanguage) {
 const WORDLE_ALLOWED_WORDS_BY_LANGUAGE: Record<WordleLanguage, Record<WordLength, Set<string>>> = {
   ru: createWordleAllowedWords('ru'),
   kk: createWordleAllowedWords('kk'),
+  en: createWordleAllowedWords('en'),
 };
 
 function normalizeWord(value: string, language: WordleLanguage = 'ru') {
@@ -491,7 +636,7 @@ function isPlausibleOfflineWord(word: string, length: WordLength, language: Word
   const uniqueLetters = new Set(word);
   if (uniqueLetters.size === 1) return false;
 
-  const vowelPattern = language === 'kk' ? /[аәеёиоөұүыіэюя]/g : /[аеёиоуыэюя]/g;
+  const vowelPattern = language === 'en' ? /[aeiouy]/g : language === 'kk' ? /[аәеёиоөұүыіэюя]/g : /[аеёиоуыэюя]/g;
   const vowels = word.match(vowelPattern)?.length ?? 0;
   if (vowels === 0) return false;
 
@@ -542,6 +687,7 @@ function readLocalLearnedWords() {
       parsed.flatMap((item): string[] => {
         if (typeof item !== 'string') return [];
         if (/^(ru|kk):[456]:[а-яәғқңөұүһіё]+$/.test(item)) return [item];
+        if (/^en:[456]:[a-z]+$/.test(item)) return [item];
         if (/^[456]:[а-я]+$/.test(item)) return [`ru:${item}`];
         return [];
       }),
@@ -604,10 +750,6 @@ function getWordleModeKey(userEmail: string) {
 
 function getWordleLanguageKey(userEmail: string) {
   return `${WORDLE_LANGUAGE_PREFIX}_${userEmail}`;
-}
-
-function loadWordleLanguage(userEmail: string): WordleLanguage {
-  return localStorage.getItem(getWordleLanguageKey(userEmail)) === 'kk' ? 'kk' : 'ru';
 }
 
 function loadWordleMode(userEmail: string): WordleMode {
@@ -715,15 +857,19 @@ async function isRealWord(word: string, length: WordLength, language: WordleLang
     return cachedValue;
   }
 
-  const languageName = language === 'kk' ? 'казахское' : 'русское';
+  const languageName = language === 'kk' ? 'казахское' : language === 'en' ? 'английское' : 'русское';
   const languagePrompt = language === 'kk'
     ? 'Ты проверяешь слова для казахской игры Wordle. Верни только JSON вида {"valid": true} или {"valid": false}. true только если это реально существующее казахское слово в начальной форме или обычной словарной форме. Не принимай наборы букв, опечатки, имена людей, бренды, сокращения, русские слова и слова не той длины.'
-    : 'Ты проверяешь слова для русской игры Wordle. Верни только JSON вида {"valid": true} или {"valid": false}. true только если это реально существующее русское слово в начальной форме или обычной словарной форме. Не принимай наборы букв, опечатки, имена людей, бренды, сокращения, английские слова и слова не той длины.';
+    : language === 'en'
+      ? 'You validate words for an English Wordle game. Return only JSON like {"valid": true} or {"valid": false}. true only if it is a real common English word in a normal dictionary form. Do not accept random letter strings, typos, names, brands, abbreviations, non-English words, or words with the wrong length.'
+      : 'Ты проверяешь слова для русской игры Wordle. Верни только JSON вида {"valid": true} или {"valid": false}. true только если это реально существующее русское слово в начальной форме или обычной словарной форме. Не принимай наборы букв, опечатки, имена людей, бренды, сокращения, английские слова и слова не той длины.';
 
   const { data, error } = await supabase.functions.invoke<AiTextResponse>('ai', {
     body: {
       system: languagePrompt,
-      prompt: `Слово: "${word}". Длина должна быть ровно ${length} букв. Это существующее ${languageName} слово для Wordle?`,
+      prompt: language === 'en'
+        ? `Word: "${word}". It must be exactly ${length} letters long. Is it a real English word for Wordle?`
+        : `Слово: "${word}". Длина должна быть ровно ${length} букв. Это существующее ${languageName} слово для Wordle?`,
       json: true,
     },
   });
@@ -864,12 +1010,15 @@ export function WordleGame({
   onReward,
   onSpendCoins,
   rewardCoins,
+  uiLanguage,
   userEmail,
 }: WordleGameProps) {
+  const text = WORDLE_UI_TEXT[uiLanguage];
+  const syncedWordleLanguage = getWordleLanguageFromUi(uiLanguage);
   const boardRef = useRef<HTMLDivElement>(null);
   const mobileInputRef = useRef<HTMLInputElement>(null);
   const todayKey = getTodayKey();
-  const initialLanguage = loadWordleLanguage(userEmail);
+  const initialLanguage = syncedWordleLanguage;
   const initialMode = loadWordleMode(userEmail);
   const savedState = loadWordleState(userEmail, initialMode, initialLanguage, todayKey);
   const initialDailyWord = getDailyWord(todayKey, initialLanguage);
@@ -986,6 +1135,10 @@ export function WordleGame({
       document.removeEventListener('visibilitychange', handleReturnToGame);
     };
   }, [dailyDateKey, wordleLanguage, wordleMode]);
+
+  useEffect(() => {
+    changeLanguage(syncedWordleLanguage);
+  }, [syncedWordleLanguage]);
 
   function refreshDailyWordIfNeeded() {
     const currentTodayKey = getTodayKey();
@@ -1108,9 +1261,7 @@ export function WordleGame({
     const nextHintIndex = getHintIndex(targetWord, rows);
     setHintIndex(nextHintIndex);
     setShowAd(false);
-    setMessage(
-      `Реклама просмотрена. Подсказка: буква ${nextHintIndex + 1} - "${targetWord[nextHintIndex]}".`,
-    );
+    setMessage(text.adHint(nextHintIndex + 1, targetWord[nextHintIndex]));
     window.setTimeout(focusBoard, 0);
   }
 
@@ -1118,14 +1269,14 @@ export function WordleGame({
     if (status !== 'playing' || hintIndex !== null) return;
 
     if (!onSpendCoins()) {
-      setMessage(`Нужно ${hintCost} монет для подсказки.`);
+      setMessage(text.needCoins(hintCost));
       window.setTimeout(focusBoard, 0);
       return;
     }
 
     const nextHintIndex = getHintIndex(targetWord, rows);
     setHintIndex(nextHintIndex);
-    setMessage(`Подсказка куплена за ${hintCost} монет: буква ${nextHintIndex + 1} - "${targetWord[nextHintIndex]}".`);
+    setMessage(text.boughtHint(hintCost, nextHintIndex + 1, targetWord[nextHintIndex]));
     window.setTimeout(focusBoard, 0);
   }
 
@@ -1134,7 +1285,7 @@ export function WordleGame({
     if (status !== 'playing' || checkingWord) return;
 
     if (normalizedGuess.length !== wordLength) {
-      setMessage(`Нужно слово из ${wordLength} букв.`);
+      setMessage(text.needLetters(wordLength));
       focusBoard();
       return;
     }
@@ -1164,7 +1315,7 @@ export function WordleGame({
         isPlausibleOfflineWord(normalizedGuess, wordLength, wordleLanguage);
 
       if (!validOfflineWord) {
-        setMessage('ИИ недоступен, а такого слова нет в локальном словаре игры.');
+        setMessage(text.aiWordError);
         focusBoard();
         return;
       }
@@ -1191,11 +1342,11 @@ export function WordleGame({
       setStatus('won');
       onReward();
       if (wordleMode === 'campaign') {
-        setMessage(`Уровень ${campaignLevel} пройден! Слово: ${targetWord}. +${rewardCoins} монет.`);
+        setMessage(text.campaignWon(campaignLevel, targetWord, rewardCoins));
         return;
       }
 
-      setMessage(`Победа! Слово: ${targetWord}. +${rewardCoins} монет.`);
+      setMessage(text.won(targetWord, rewardCoins));
       return;
     }
 
@@ -1264,36 +1415,24 @@ export function WordleGame({
     window.setTimeout(focusBoard, 0);
   }
 
-  const currentAlphabet = wordleLanguage === 'kk' ? KAZAKH_ALPHABET : RUSSIAN_ALPHABET;
+  const currentAlphabet = wordleLanguage === 'kk'
+    ? KAZAKH_ALPHABET
+    : wordleLanguage === 'en'
+      ? ENGLISH_ALPHABET
+      : RUSSIAN_ALPHABET;
 
   return (
     <section className="wordle-shell">
       <div className="game-card">
-        <p className="hello">Игрок: {userEmail}</p>
+        <p className="hello">{text.player}: {userEmail}</p>
         <h2>Wordle</h2>
-        <p className="game-subtitle">
-          Кликни по таблице и печатай буквы прямо в неё. Enter проверяет слово,
-          Backspace стирает букву.
-        </p>
+        <p className="game-subtitle">{text.subtitle}</p>
 
         <p className="currency-note">
-          Баланс: {coins} монет. Победа дает {rewardCoins}, подсказка стоит {hintCost}.
+          {text.balance(coins, rewardCoins, hintCost)}
         </p>
 
-        <div className="wordle-language-tabs" aria-label="Выбор языка Wordle">
-          {WORDLE_LANGUAGES.map((language) => (
-            <button
-              className={wordleLanguage === language.id ? 'mode-button active' : 'mode-button'}
-              key={language.id}
-              onClick={() => changeLanguage(language.id)}
-              type="button"
-            >
-              {language.title}
-            </button>
-          ))}
-        </div>
-
-        <div className="wordle-modes" aria-label="Длина слова">
+        <div className="wordle-modes" aria-label={text.lengthLabel}>
           {([4, 5, 6] as const).map((length) => (
             <button
               className={wordleMode === 'classic' && wordLength === length ? 'mode-button active' : 'mode-button'}
@@ -1301,7 +1440,7 @@ export function WordleGame({
               onClick={() => openClassicMode(length)}
               type="button"
             >
-              {length} {length === 4 ? 'буквы' : 'букв'}
+              {length} {text.letters}
             </button>
           ))}
           <button
@@ -1309,25 +1448,25 @@ export function WordleGame({
             onClick={openDailyMode}
             type="button"
           >
-            Слово дня
+            {text.daily}
           </button>
           <button
             className={wordleMode === 'campaign' ? 'mode-button active campaign-word-button' : 'mode-button campaign-word-button'}
             onClick={openCampaignMode}
             type="button"
           >
-            Прохождение
+            {text.campaign}
           </button>
         </div>
         {wordleMode === 'campaign' && (
           <p className="daily-word-note campaign-progress">
-            Уровень {campaignLevel}/{CAMPAIGN_LEVEL_COUNT}. Длина слова: {wordLength} букв.
+            {text.level(campaignLevel, CAMPAIGN_LEVEL_COUNT, wordLength)}
           </p>
         )}
 
         <form className="wordle-form" onSubmit={submitGuess}>
           <div
-            aria-label="Поле ввода Wordle"
+            aria-label={text.boardLabel}
             className="wordle-board-button"
             onClick={focusBoard}
             onKeyDown={handleBoardKeyDown}
@@ -1336,7 +1475,7 @@ export function WordleGame({
             tabIndex={0}
           >
             <input
-              aria-label="Ввод слова Wordle"
+              aria-label={text.inputLabel}
               autoCapitalize="none"
               autoComplete="off"
               autoCorrect="off"
@@ -1383,7 +1522,7 @@ export function WordleGame({
             </span>
           </div>
 
-          <div className="letter-board" aria-label="Список букв">
+          <div className="letter-board" aria-label={text.letterList}>
             {currentAlphabet.map((letter) => {
               const letterStatus = letterStatuses[letter] ?? 'unused';
 
@@ -1409,10 +1548,10 @@ export function WordleGame({
                 onClick={removeLetter}
                 type="button"
               >
-                Стереть
+                {text.erase}
               </button>
               <button disabled={status !== 'playing' || checkingWord} type="submit">
-                {checkingWord ? 'Проверяем...' : 'Проверить'}
+                {checkingWord ? text.checking : text.check}
               </button>
             </div>
             <div className="wordle-actions-group wordle-actions-hints">
@@ -1422,7 +1561,7 @@ export function WordleGame({
                 onClick={buyHint}
                 type="button"
               >
-                Подсказка {hintCost}
+                {text.hint(hintCost)}
               </button>
               <button
                 className="ad-button"
@@ -1430,7 +1569,7 @@ export function WordleGame({
                 onClick={openAdForHint}
                 type="button"
               >
-                Реклама
+                {text.ad}
               </button>
             </div>
           </div>
@@ -1443,27 +1582,27 @@ export function WordleGame({
         {status !== 'playing' && (
           <>
             <div className={status === 'won' ? 'answer-reveal solved' : 'answer-reveal gave-up'}>
-              <span>{status === 'won' ? 'Правильное слово' : 'Слово было'}</span>
+              <span>{status === 'won' ? text.correctWord : text.wordWas}</span>
               <strong>{targetWord}</strong>
             </div>
             {wordleMode === 'daily' ? (
               <p className="daily-word-note finished">
-                Слово дня уже сыграно. Новое откроется через {dailyCountdown}.
+                {text.dailyFinished(dailyCountdown)}
               </p>
             ) : wordleMode === 'campaign' ? (
               <button className="next-button" onClick={() => resetGame()} type="button">
-                {status === 'won' && campaignLevel < CAMPAIGN_LEVEL_COUNT ? 'Следующий уровень' : 'Повторить уровень'}
+                {status === 'won' && campaignLevel < CAMPAIGN_LEVEL_COUNT ? text.nextLevel : text.retryLevel}
               </button>
             ) : (
               <button className="next-button" onClick={() => resetGame()} type="button">
-                Новое слово
+                {text.newWord}
               </button>
             )}
           </>
         )}
       </div>
 
-      {showAd && <AdModal onClose={closeAdAndRevealHint} />}
+      {showAd && <AdModal onClose={closeAdAndRevealHint} uiLanguage={uiLanguage} />}
     </section>
   );
 }

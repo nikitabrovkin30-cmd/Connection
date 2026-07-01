@@ -5,6 +5,7 @@ type AuthProps = {
   onGuestStart: () => Promise<void>;
   onGoogleStart: () => Promise<void>;
   onStart: (email: string, password: string) => Promise<string>;
+  uiLanguage: 'ru' | 'kk' | 'en';
 };
 
 type GamePreviewKind = 'wordle' | 'association' | 'puzzle' | 'who';
@@ -15,6 +16,54 @@ const INTRO_GAMES: readonly { title: string; kind: GamePreviewKind }[] = [
   { title: 'Puzzle', kind: 'puzzle' },
   { title: 'Who am I?', kind: 'who' },
 ];
+
+const AUTH_TEXT = {
+  ru: {
+    introKicker: 'Игры в проекте',
+    openRegistration: 'Открыть регистрацию',
+    continue: 'Продолжить',
+    title: 'Вход в игру',
+    subtitle: 'Войди по mail и выбирай режим: Association, Wordle, Puzzle или Who am I?.',
+    password: 'пароль',
+    emailError: 'Напиши mail правильно.',
+    passwordError: 'Пароль должен быть хотя бы из 4 символов.',
+    loading: 'Входим...',
+    play: 'Играть',
+    guest: 'Играть гостем',
+    google: 'Войти через Google',
+    badges: ['звезда', 'море', 'книга'],
+  },
+  kk: {
+    introKicker: 'Жобадағы ойындар',
+    openRegistration: 'Тіркелуді ашу',
+    continue: 'Жалғастыру',
+    title: 'Ойынға кіру',
+    subtitle: 'Mail арқылы кіріп, режим таңда: Association, Wordle, Puzzle немесе Who am I?.',
+    password: 'құпия сөз',
+    emailError: 'Mail дұрыс жаз.',
+    passwordError: 'Құпия сөз кемінде 4 таңбадан тұруы керек.',
+    loading: 'Кіру...',
+    play: 'Ойнау',
+    guest: 'Қонақ болып ойнау',
+    google: 'Google арқылы кіру',
+    badges: ['жұлдыз', 'теңіз', 'кітап'],
+  },
+  en: {
+    introKicker: 'Games in the project',
+    openRegistration: 'Open registration',
+    continue: 'Continue',
+    title: 'Enter the game',
+    subtitle: 'Sign in with mail and choose a mode: Association, Wordle, Puzzle or Who am I?.',
+    password: 'password',
+    emailError: 'Write a valid mail.',
+    passwordError: 'Password must be at least 4 characters.',
+    loading: 'Signing in...',
+    play: 'Play',
+    guest: 'Play as guest',
+    google: 'Sign in with Google',
+    badges: ['star', 'sea', 'book'],
+  },
+} as const;
 
 function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
@@ -75,7 +124,8 @@ function GameModePicture({ kind, title }: { kind: GamePreviewKind; title: string
   );
 }
 
-export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
+export function Auth({ onGoogleStart, onGuestStart, onStart, uiLanguage }: AuthProps) {
+  const text = AUTH_TEXT[uiLanguage];
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
@@ -88,12 +138,12 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
     const nextEmail = normalizeEmail(email);
 
     if (!nextEmail.includes('@')) {
-      setMessage('Напиши mail правильно.');
+      setMessage(text.emailError);
       return;
     }
 
     if (password.length < 4) {
-      setMessage('Пароль должен быть хотя бы из 4 символов.');
+      setMessage(text.passwordError);
       return;
     }
 
@@ -123,12 +173,12 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
   if (showIntro) {
     return (
       <section className="card intro-card">
-        <span className="intro-kicker">Игры в проекте</span>
+        <span className="intro-kicker">{text.introKicker}</span>
 
         <div className="intro-grid">
           {INTRO_GAMES.map((game) => (
             <button
-              aria-label={`Открыть регистрацию: ${game.title}`}
+              aria-label={`${text.openRegistration}: ${game.title}`}
               className={`intro-panel intro-panel-button ${game.kind}-panel`}
               key={game.kind}
               onClick={() => setShowIntro(false)}
@@ -140,7 +190,7 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
         </div>
 
         <button className="next-button" onClick={() => setShowIntro(false)} type="button">
-          Продолжить
+          {text.continue}
         </button>
       </section>
     );
@@ -149,13 +199,13 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
   return (
     <section className="card lobby-card">
       <div className="lobby-badges" aria-hidden="true">
-        <span>звезда</span>
-        <span>море</span>
-        <span>книга</span>
+        {text.badges.map((badge) => (
+          <span key={badge}>{badge}</span>
+        ))}
       </div>
 
-      <h2>Вход в игру</h2>
-      <p className="auth-subtitle">Войди по mail и выбирай режим: Association, Wordle, Puzzle или Who am I?.</p>
+      <h2>{text.title}</h2>
+      <p className="auth-subtitle">{text.subtitle}</p>
 
       <div className="lobby-preview" aria-hidden="true">
         <span>Association</span>
@@ -179,7 +229,7 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
         />
         <input
           type="password"
-          placeholder="пароль"
+          placeholder={text.password}
           value={password}
           onChange={(e) => {
             setPassword(e.target.value);
@@ -190,16 +240,16 @@ export function Auth({ onGoogleStart, onGuestStart, onStart }: AuthProps) {
           disabled={busy}
         />
         <button type="submit" disabled={busy}>
-          {busy ? 'Входим...' : 'Играть'}
+          {busy ? text.loading : text.play}
         </button>
       </form>
 
       <button className="guest-button" disabled={busy} onClick={handleGuestStart} type="button">
-        {busy ? 'Входим...' : 'Играть гостем'}
+        {busy ? text.loading : text.guest}
       </button>
 
       <button className="google-button" disabled={busy} onClick={handleGoogleStart} type="button">
-        Войти через Google
+        {text.google}
       </button>
 
       {message && <p className="message">{message}</p>}
